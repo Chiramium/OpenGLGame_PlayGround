@@ -6,8 +6,10 @@
 #include <math.h>
 
 // ウィンドウサイズの定義
-#define WWIDTH 450
-#define WHEIGHT 450
+#define WWIDTH 480
+#define WHEIGHT 640
+
+
 
 // Prototype
 void Reshape(int, int);
@@ -17,18 +19,21 @@ void Select(void);
 void Run(void);
 void Result(void);
 void Display(void);
+void PrintText(int x, int y, char *s);
 void Mouse(int, int, int, int);
 void PassiveMotion(int, int);
 void Motion(int, int);
 void Entry(int);
 void Keyboard(unsigned char, int, int);
-void PutSprite(int, int, int, pngInfo *);
+void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
 
 GLuint img;
 pngInfo info;
 
 int mode = 0;
 int col = 0;
+int score = 0;
+char str[32];
 
 int main(int argc, char **argv)
 {
@@ -49,6 +54,9 @@ int main(int argc, char **argv)
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+  sprintf(str, "./images/player.png");
+  img = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   // コールバック関数の登録
   glutReshapeFunc(Reshape);
@@ -124,6 +132,7 @@ void Select(void)
 void Run(void)
 {
   col = 2;
+  score++;
 }
 
 void Result(void)
@@ -134,7 +143,8 @@ void Result(void)
 void Display(void)
 {
   //int x, y; // PNG画像をおく座標
-  //int w, h; // 現在のウィンドウのサイズ
+  int width = 400, height = 460; // ゲームマップのサイズ
+  char str_score[16];
 
   // ウィンドウの背景色
   glClear(GL_COLOR_BUFFER_BIT);
@@ -167,10 +177,41 @@ void Display(void)
   glVertex2i(WWIDTH, 0);
   glEnd();
 
+  glColor4ub(255, 255, 255, mode==0 ? 255 : 0);
+  PrintText(100, 290, "START");
+
+  glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
+  glBegin(GL_QUADS);
+  glVertex2i(40, 40);
+  glVertex2i(40, 40+height);
+  glVertex2i(40+width, 40+height);
+  glVertex2i(40+width, 40);
+  glEnd();
+
+  PutSprite(img, 216, height-8, &info, 255, 255, 255, mode==2 ? 255 : 0);
+
+  glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
+  PrintText(40, 540, "SCORE");
+
+  sprintf(str_score, "%015d", score);
+  PrintText(120, 540, str_score);
+
+
   //w = glutGet(GLUT_WINDOW_WIDTH);
   //h = glutGet(GLUT_WINDOW_HEIGHT);
 
   glFlush();
+}
+
+void PrintText(int x, int y, char *s)
+{
+  int i = 0;
+
+  glRasterPos2i(x, y);
+  for (i = 0; i < strlen(s); i++)
+  {
+    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, s[i]);
+  }
 }
 
 void Mouse (int b, int s, int x, int y)
@@ -225,31 +266,32 @@ void Keyboard(unsigned char key, int x, int y)
   }
 }
 
-void PutSprite(int num, int x, int y, pngInfo *info)
+void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a)
 {
   int w, h; // テクスチャの幅と高さ
 
-  w = info->Width; // テクスチャの幅と高さを取得する
+  w = info->Width; // テクスチャの幅と高さを取得
   h = info->Height;
 
+  // 描画した四角形にテクスチャを貼り付け
   glPushMatrix();
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, num);
-  glColor4ub(255, 255, 255, 255);
+  glColor4ub(r, g, b, a);
 
   glBegin(GL_QUADS); // 幅w, 高さhの四角形
 
   glTexCoord2i(0, 0);
-  glVertex2i(x-32, y-32);
+  glVertex2i(x, y);
 
   glTexCoord2i(0, 1);
-  glVertex2i(x-32, y-32 + h);
+  glVertex2i(x, y + h);
 
   glTexCoord2i(1, 1);
-  glVertex2i(x-32 + w, y-32 + h);
+  glVertex2i(x + w, y + h);
 
   glTexCoord2i(1, 0);
-  glVertex2i(x-32 + w, y-32);
+  glVertex2i(x + w, y);
 
   glEnd();
 
