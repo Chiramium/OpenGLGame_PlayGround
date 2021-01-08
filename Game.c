@@ -13,6 +13,7 @@
 
 // Prototype
 void Reshape(int, int);
+void Initialize();
 void Transition(int value);
 void Title(void);
 void Select(void);
@@ -25,15 +26,31 @@ void PassiveMotion(int, int);
 void Motion(int, int);
 void Entry(int);
 void Keyboard(unsigned char, int, int);
+void SpecialKey(int, int, int);
+void SpecialKeyUp(int, int, int);
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
 
 GLuint img;
 pngInfo info;
 
-int mode = 0;
+struct PLAYER
+{
+  int x;
+  int y;
+  int shot;
+  int speed;
+  int life;
+  int collision;
+  int graze;
+} PLAYER;
+
+int mode = 2;
 int col = 0;
 int score = 0;
 char str[32];
+int plx = 216, ply = 452;
+int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
+struct PLAYER player;
 
 int main(int argc, char **argv)
 {
@@ -49,6 +66,7 @@ int main(int argc, char **argv)
   glutPositionWindow((scrWidth - WWIDTH) / 2, (scrHeight - WHEIGHT) / 2);
   glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA);
   glClearColor(1.0, 1.0, 1.0, 1.0);
+  Initialize();
 
   // アルファチャネルの有効化
   glEnable(GL_BLEND);
@@ -64,6 +82,9 @@ int main(int argc, char **argv)
   glutDisplayFunc(Display);
   glutPassiveMotionFunc(PassiveMotion);
   glutMouseFunc(Mouse);
+  glutKeyboardFunc(Keyboard);
+  glutSpecialFunc(SpecialKey);
+  glutSpecialUpFunc(SpecialKeyUp);
 
   // イベントループ突入
   glutMainLoop();
@@ -83,6 +104,17 @@ void Reshape(int w, int h)
   gluOrtho2D(0, w, 0, h);
   glScaled(1, -1, 1);
   glTranslated(0, -h, 0);
+}
+
+void Initialize()
+{
+  player.x = 240;
+  player.y = 476;
+  player.speed = 1;
+  player.collision = 0;
+  player.life = 100;
+  player.shot = 0;
+  player.graze = 0;
 }
 
 void Transition(int value)
@@ -133,6 +165,36 @@ void Run(void)
 {
   col = 2;
   score++;
+  if (direction[0] == 1) {
+    if (player.y > 64) {
+      player.y--;
+    }
+    else {
+      player.y = 64;
+    }
+  }
+  if (direction[1] == 1) {
+    if (player.x < 416) {
+      player.x++;
+    }
+    else {
+      player.y = 64;
+    }
+  }
+  if (direction[2] == 1) {
+    if (player.y < 476) {
+      player.y++;
+    }
+    else {
+      player.y = 64;
+    }
+  }
+  if (direction[3] == 1) {
+    if (player.x > 64) player.x--;
+    else {
+      player.y = 64;
+    }
+  }
 }
 
 void Result(void)
@@ -144,7 +206,7 @@ void Display(void)
 {
   //int x, y; // PNG画像をおく座標
   int width = 400, height = 460; // ゲームマップのサイズ
-  char str_score[16];
+  char str_buf[16];
 
   // ウィンドウの背景色
   glClear(GL_COLOR_BUFFER_BIT);
@@ -188,13 +250,55 @@ void Display(void)
   glVertex2i(40+width, 40);
   glEnd();
 
-  PutSprite(img, 216, height-8, &info, 255, 255, 255, mode==2 ? 255 : 0);
+  PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, mode==2 ? 255 : 0);
+
+  glColor4ub(0, 0, 255, mode==2 ? 255 : 0);
+  glBegin(GL_QUADS);
+  glVertex2i(player.x-3, player.y-3);
+  glVertex2i(player.x-3, player.y+3);
+  glVertex2i(player.x+3, player.y+3);
+  glVertex2i(player.x+3, player.y-3);
+  glEnd();
+
+  glColor4ub(255, 0, 0, mode==2 ? 255 : 0);
+  glBegin(GL_POINTS);
+  glVertex2i(player.x, player.y);
+  glEnd();
 
   glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
   PrintText(40, 540, "SCORE");
+  sprintf(str_buf, "%015d", score);
+  PrintText(120, 540, str_buf);
 
-  sprintf(str_score, "%015d", score);
-  PrintText(120, 540, str_score);
+  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  PrintText(50, 60, "POS");
+  sprintf(str_buf, "%d, %d", player.x, player.y);
+  PrintText(120, 60, str_buf);
+
+  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  PrintText(50, 80, "LIFE");
+  sprintf(str_buf, "%d", player.life);
+  PrintText(120, 80, str_buf);
+
+  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  PrintText(50, 100, "SPEED");
+  sprintf(str_buf, "%d", player.speed);
+  PrintText(120, 100, str_buf);
+
+  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  PrintText(50, 120, "SHOT");
+  sprintf(str_buf, "%d", player.shot);
+  PrintText(120, 120, str_buf);
+
+  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  PrintText(50, 140, "GRAZE");
+  sprintf(str_buf, "%d", player.graze);
+  PrintText(120, 140, str_buf);
+
+  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  PrintText(50, 160, "COLLISION");
+  sprintf(str_buf, "%d", player.collision);
+  PrintText(180, 160, str_buf);
 
 
   //w = glutGet(GLUT_WINDOW_WIDTH);
@@ -264,6 +368,66 @@ void Keyboard(unsigned char key, int x, int y)
     printf("End\n");
     exit(0);
   }
+}
+
+void SpecialKey(int key, int x, int y)
+{
+  switch (key) {
+  case GLUT_KEY_RIGHT:
+    direction[1] = 1;
+    glutPostRedisplay();
+    break;
+
+  case GLUT_KEY_LEFT:
+    direction[3] = 1;
+    glutPostRedisplay();
+    break;
+
+  case GLUT_KEY_UP:
+    direction[0] = 1;
+    glutPostRedisplay();
+    break;
+
+  case GLUT_KEY_DOWN:
+    direction[2] = 1;
+    glutPostRedisplay();
+    break;
+
+  default:
+    break;
+  }
+  //printf("%d, %d\n", px, py);
+
+}
+
+void SpecialKeyUp(int key, int x, int y)
+{
+  switch (key) {
+  case GLUT_KEY_RIGHT:
+    direction[1] = 0;
+    glutPostRedisplay();
+    break;
+
+  case GLUT_KEY_LEFT:
+    direction[3] = 0;
+    glutPostRedisplay();
+    break;
+
+  case GLUT_KEY_UP:
+    direction[0] = 0;
+    glutPostRedisplay();
+    break;
+
+  case GLUT_KEY_DOWN:
+    direction[2] = 0;
+    glutPostRedisplay();
+    break;
+
+  default:
+    break;
+  }
+  //printf("%d, %d\n", px, py);
+
 }
 
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a)
