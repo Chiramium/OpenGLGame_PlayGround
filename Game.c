@@ -26,6 +26,7 @@ void PassiveMotion(int, int);
 void Motion(int, int);
 void Entry(int);
 void Keyboard(unsigned char, int, int);
+void KeyboardUp(unsigned char, int, int);
 void SpecialKey(int, int, int);
 void SpecialKeyUp(int, int, int);
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
   glutPassiveMotionFunc(PassiveMotion);
   glutMouseFunc(Mouse);
   glutKeyboardFunc(Keyboard);
+  glutKeyboardUpFunc(KeyboardUp);
   glutSpecialFunc(SpecialKey);
   glutSpecialUpFunc(SpecialKeyUp);
 
@@ -110,7 +112,7 @@ void Initialize()
 {
   player.x = 240;
   player.y = 476;
-  player.speed = 1;
+  player.speed = 5;
   player.collision = 0;
   player.life = 100;
   player.shot = 0;
@@ -165,9 +167,10 @@ void Run(void)
 {
   col = 2;
   score++;
+
   if (direction[0] == 1) {
     if (player.y > 64) {
-      player.y--;
+      player.y -= player.speed;
     }
     else {
       player.y = 64;
@@ -175,24 +178,26 @@ void Run(void)
   }
   if (direction[1] == 1) {
     if (player.x < 416) {
-      player.x++;
+      player.x += player.speed;
     }
     else {
-      player.y = 64;
+      player.x = 416;
     }
   }
   if (direction[2] == 1) {
     if (player.y < 476) {
-      player.y++;
+      player.y += player.speed;
     }
     else {
-      player.y = 64;
+      player.y = 476;
     }
   }
   if (direction[3] == 1) {
-    if (player.x > 64) player.x--;
+    if (player.x > 64) {
+      player.x -= player.speed;
+    }
     else {
-      player.y = 64;
+      player.x = 64;
     }
   }
 }
@@ -368,10 +373,32 @@ void Keyboard(unsigned char key, int x, int y)
     printf("End\n");
     exit(0);
   }
+  if (key == 'z') {
+    printf("zDown\n");
+    player.shot = 1;
+  }
+}
+
+void KeyboardUp(unsigned char key, int x, int y)
+{
+  if (key == 'z') {
+    printf("zUp\n");
+    player.shot = 0;
+  }
 }
 
 void SpecialKey(int key, int x, int y)
 {
+  int mod = 0;
+
+  mod = glutGetModifiers();
+  if ((mod & GLUT_ACTIVE_SHIFT) != 0) {
+    player.speed = 1;
+  }
+  else {
+    player.speed = 5;
+  }
+
   switch (key) {
   case GLUT_KEY_RIGHT:
     direction[1] = 1;
