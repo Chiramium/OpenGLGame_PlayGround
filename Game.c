@@ -9,12 +9,13 @@
 #define WWIDTH 480
 #define WHEIGHT 640
 
-
+#define ENEMIES_MAX 5
 
 // Prototype
 void Reshape(int, int);
 void Initialize();
 void Transition(int value);
+void isCollided(void);
 void Title(void);
 void Select(void);
 void Run(void);
@@ -31,8 +32,8 @@ void SpecialKey(int, int, int);
 void SpecialKeyUp(int, int, int);
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
 
-GLuint img;
-pngInfo info;
+GLuint img, img_fl;
+pngInfo info, info_fl;
 
 struct PLAYER
 {
@@ -42,8 +43,22 @@ struct PLAYER
   int speed;
   int life;
   int collision;
+  int bomb;
   int graze;
 } PLAYER;
+
+struct ENEMY
+{
+  int x;
+  int y;
+  int shot;
+  int speed;
+  int life;
+  int collision;
+  int active;
+  int type;
+} ENEMY;
+
 
 int mode = 2;
 int col = 0;
@@ -52,18 +67,19 @@ char str[32];
 int plx = 216, ply = 452;
 int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
 struct PLAYER player;
+struct ENEMY enemy[ENEMIES_MAX];
 
 int main(int argc, char **argv)
 {
   int scrWidth = 0, scrHeight = 0; // 画面全体のサイズ
 
   // ウィンドウ初期化, 乱数初期化
-  srandom(12345);
+  srandom((unsigned int)time(NULL));
   glutInit(&argc, argv);
   scrWidth = glutGet(GLUT_SCREEN_WIDTH);
   scrHeight = glutGet(GLUT_SCREEN_HEIGHT);
   glutInitWindowSize(WWIDTH, WHEIGHT);
-  glutCreateWindow("Game [Test]");
+  glutCreateWindow("Game [Test] ---DEBUG MODE---");
   glutPositionWindow((scrWidth - WWIDTH) / 2, (scrHeight - WHEIGHT) / 2);
   glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA);
   glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -76,6 +92,9 @@ int main(int argc, char **argv)
 
   sprintf(str, "./images/player.png");
   img = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/field.png");
+  img_fl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_fl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   // コールバック関数の登録
   glutReshapeFunc(Reshape);
@@ -110,6 +129,8 @@ void Reshape(int w, int h)
 
 void Initialize()
 {
+  int i;
+
   player.x = 240;
   player.y = 476;
   player.speed = 5;
@@ -117,6 +138,12 @@ void Initialize()
   player.life = 100;
   player.shot = 0;
   player.graze = 0;
+
+  for (i = 0; i < ENEMIES_MAX; i++) {
+    enemy[i].x = (random() % 400) + 40;
+    enemy[i].y = (random() % 300) + 40;
+    enemy[i].active = 1;
+  }
 }
 
 void Transition(int value)
@@ -151,6 +178,41 @@ void Transition(int value)
   glutPostRedisplay();
 
   glutTimerFunc(20, Transition, 0);
+}
+
+void isCollided(void)
+{
+  int i;
+  int cflag = 0;
+
+  for (i = 0; i < ENEMIES_MAX; i++) {
+    if (((player.x-3 >= enemy[i].x && player.x-3 <= enemy[i].x+32) || (player.x+3 >= enemy[i].x && player.x+3 <= enemy[i].x+32)) && ((player.y-3 >= enemy[i].y && player.y-3 <= enemy[i].y+32) || (player.y+3 >= enemy[i].y && player.y+3 <= enemy[i].y+32))) {
+      cflag = 1;
+    }
+    else if ((player.x-3 >= enemy[i].x-8 && player.x-3 <= enemy[i].x+40) || (player.x+3 >= enemy[i].x-8 && player.x+3 <= enemy[i].x+40)) {
+      if ((player.y-3 >= enemy[i].y-8 && player.y-3 <= enemy[i].y+40) || (player.y+3 >= enemy[i].y-8 && player.y+3 <= enemy[i].y+40)) {
+        player.graze++;
+        score += 100;
+      }
+    }
+    else if ((player.y-3 >= enemy[i].y-8 && player.y-3 <= enemy[i].y+40) || (player.y+3 >= enemy[i].y-8 && player.y+3 <= enemy[i].y+40)) {
+      if ((player.x-3 >= enemy[i].x-8 && player.x-3 <= enemy[i].x+40) || (player.x+3 >= enemy[i].x-8 && player.x+3 <= enemy[i].x+40)) {
+        player.graze++;
+        score += 100;
+      }
+    }
+  }
+
+  if (cflag == 1) {
+    player.collision = 1;
+    if (player.life > 0) {
+      player.life--;
+    }
+    cflag = 0;
+  }
+  else {
+    player.collision = 0;
+  }
 }
 
 void Title(void)
@@ -200,6 +262,8 @@ void Run(void)
       player.x = 64;
     }
   }
+
+  isCollided();
 }
 
 void Result(void)
@@ -211,6 +275,7 @@ void Display(void)
 {
   //int x, y; // PNG画像をおく座標
   int width = 400, height = 460; // ゲームマップのサイズ
+  int i;
   char str_buf[16];
 
   // ウィンドウの背景色
@@ -250,12 +315,32 @@ void Display(void)
   glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
   glBegin(GL_QUADS);
   glVertex2i(40, 40);
-  glVertex2i(40, 40+height);
-  glVertex2i(40+width, 40+height);
-  glVertex2i(40+width, 40);
+  glVertex2i(40, 40+height+1);
+  glVertex2i(40+width+1, 40+height+1);
+  glVertex2i(40+width+1, 40);
   glEnd();
 
   PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, mode==2 ? 255 : 0);
+
+  glColor4ub(0, 255, 0, mode==2 ? 255 : 0);
+  for (i = 0; i < ENEMIES_MAX; i++) {
+    glBegin(GL_QUADS);
+    glVertex2i(enemy[i].x-8, enemy[i].y-8);
+    glVertex2i(enemy[i].x-8, enemy[i].y+40);
+    glVertex2i(enemy[i].x+40, enemy[i].y+40);
+    glVertex2i(enemy[i].x+40, enemy[i].y-8);
+    glEnd();
+  }
+
+  glColor4ub(255, 0, 0, mode==2 ? 255 : 0);
+  for (i = 0; i < ENEMIES_MAX; i++) {
+    glBegin(GL_QUADS);
+    glVertex2i(enemy[i].x, enemy[i].y);
+    glVertex2i(enemy[i].x, enemy[i].y+32);
+    glVertex2i(enemy[i].x+32, enemy[i].y+32);
+    glVertex2i(enemy[i].x+32, enemy[i].y);
+    glEnd();
+  }
 
   glColor4ub(0, 0, 255, mode==2 ? 255 : 0);
   glBegin(GL_QUADS);
@@ -270,37 +355,34 @@ void Display(void)
   glVertex2i(player.x, player.y);
   glEnd();
 
+  PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, mode==2 ? 255 : 0);
+
   glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
   PrintText(40, 540, "SCORE");
   sprintf(str_buf, "%015d", score);
   PrintText(120, 540, str_buf);
 
-  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
+  glColor4ub(0, 0, 255, mode==2 ? 200 : 0);
   PrintText(50, 60, "POS");
   sprintf(str_buf, "%d, %d", player.x, player.y);
   PrintText(120, 60, str_buf);
 
-  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
   PrintText(50, 80, "LIFE");
   sprintf(str_buf, "%d", player.life);
   PrintText(120, 80, str_buf);
 
-  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
   PrintText(50, 100, "SPEED");
   sprintf(str_buf, "%d", player.speed);
   PrintText(120, 100, str_buf);
 
-  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
   PrintText(50, 120, "SHOT");
   sprintf(str_buf, "%d", player.shot);
   PrintText(120, 120, str_buf);
 
-  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
   PrintText(50, 140, "GRAZE");
   sprintf(str_buf, "%d", player.graze);
   PrintText(120, 140, str_buf);
 
-  glColor4ub(255, 0, 0, mode==2 ? 200 : 0);
   PrintText(50, 160, "COLLISION");
   sprintf(str_buf, "%d", player.collision);
   PrintText(180, 160, str_buf);
