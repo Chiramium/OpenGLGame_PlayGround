@@ -19,6 +19,7 @@ void isCollided(void);
 void Title(void);
 void Select(void);
 void Run(void);
+void Stop(void);
 void Result(void);
 void Display(void);
 void PrintText(int x, int y, char *s);
@@ -66,6 +67,7 @@ int score = 0;
 char str[32];
 int plx = 216, ply = 452;
 int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
+int menu_select = 0;
 struct PLAYER player;
 struct ENEMY enemy[ENEMIES_MAX];
 
@@ -148,7 +150,7 @@ void Initialize()
 
 void Transition(int value)
 {
-  mode = mode % 4;
+  mode = mode % 5;
   //printf("modeA = %d\n", mode);
 
   switch (mode) {
@@ -165,6 +167,10 @@ void Transition(int value)
     break;
 
   case 3:
+    Stop();
+    break;
+
+  case 4:
     Result();
     break;
 
@@ -266,6 +272,11 @@ void Run(void)
   isCollided();
 }
 
+void Stop(void)
+{
+
+}
+
 void Result(void)
 {
   col = 3;
@@ -309,85 +320,118 @@ void Display(void)
   glVertex2i(WWIDTH, 0);
   glEnd();
 
-  glColor4ub(255, 255, 255, mode==0 ? 255 : 0);
-  PrintText(100, 290, "START");
-  PrintText(100, 310, "SETTING");
-  PrintText(100, 330, "QUIT");
+  if (mode == 0) {
+    glColor4ub(0, 0, 0, menu_select==0 ? 255 : 0);
+    PrintText(101, 291, "START");
+    glColor4ub(0, 0, 0, menu_select==1 ? 255 : 0);
+    PrintText(101, 311, "SETTING");
+    glColor4ub(0, 0, 0, menu_select==2 ? 255 : 0);
+    PrintText(101, 331, "QUIT");
 
-  glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
-  glBegin(GL_QUADS);
-  glVertex2i(40, 40);
-  glVertex2i(40, 40+height+1);
-  glVertex2i(40+width+1, 40+height+1);
-  glVertex2i(40+width+1, 40);
-  glEnd();
-
-  PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, mode==2 ? 255 : 0);
-
-  glColor4ub(0, 255, 0, mode==2 ? 255 : 0);
-  for (i = 0; i < ENEMIES_MAX; i++) {
-    glBegin(GL_QUADS);
-    glVertex2i(enemy[i].x-8, enemy[i].y-8);
-    glVertex2i(enemy[i].x-8, enemy[i].y+40);
-    glVertex2i(enemy[i].x+40, enemy[i].y+40);
-    glVertex2i(enemy[i].x+40, enemy[i].y-8);
-    glEnd();
+    glColor4ub(255, 255, 255, mode==0 ? 255 : 0);
+    PrintText(100, 290, "START");
+    PrintText(100, 310, "SETTING");
+    PrintText(100, 330, "QUIT");
   }
 
-  glColor4ub(255, 0, 0, mode==2 ? 255 : 0);
-  for (i = 0; i < ENEMIES_MAX; i++) {
+  if (mode == 2 || mode == 3) {
+    glColor4ub(255, 255, 255, 255);
     glBegin(GL_QUADS);
-    glVertex2i(enemy[i].x, enemy[i].y);
-    glVertex2i(enemy[i].x, enemy[i].y+32);
-    glVertex2i(enemy[i].x+32, enemy[i].y+32);
-    glVertex2i(enemy[i].x+32, enemy[i].y);
+    glVertex2i(40, 40);
+    glVertex2i(40, 40+height+1);
+    glVertex2i(40+width+1, 40+height+1);
+    glVertex2i(40+width+1, 40);
     glEnd();
+
+    PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, 255);
+
+    glColor4ub(0, 255, 0, 255);
+    for (i = 0; i < ENEMIES_MAX; i++) {
+      glBegin(GL_QUADS);
+      glVertex2i(enemy[i].x-8, enemy[i].y-8);
+      glVertex2i(enemy[i].x-8, enemy[i].y+40);
+      glVertex2i(enemy[i].x+40, enemy[i].y+40);
+      glVertex2i(enemy[i].x+40, enemy[i].y-8);
+      glEnd();
+    }
+
+    glColor4ub(255, 0, 0, 255);
+    for (i = 0; i < ENEMIES_MAX; i++) {
+      glBegin(GL_QUADS);
+      glVertex2i(enemy[i].x, enemy[i].y);
+      glVertex2i(enemy[i].x, enemy[i].y+32);
+      glVertex2i(enemy[i].x+32, enemy[i].y+32);
+      glVertex2i(enemy[i].x+32, enemy[i].y);
+      glEnd();
+    }
+
+    glColor4ub(0, 0, 255, 255);
+    glBegin(GL_QUADS);
+    glVertex2i(player.x-3, player.y-3);
+    glVertex2i(player.x-3, player.y+3);
+    glVertex2i(player.x+3, player.y+3);
+    glVertex2i(player.x+3, player.y-3);
+    glEnd();
+
+    glColor4ub(255, 0, 0, 255);
+    glBegin(GL_POINTS);
+    glVertex2i(player.x, player.y);
+    glEnd();
+
+    PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, 255);
+
+    glColor4ub(255, 255, 255, 255);
+    PrintText(40, 540, "SCORE");
+    sprintf(str_buf, "%015d", score);
+    PrintText(120, 540, str_buf);
+
+    glColor4ub(0, 0, 255, 200);
+    PrintText(50, 60, "POS");
+    sprintf(str_buf, "%d, %d", player.x, player.y);
+    PrintText(120, 60, str_buf);
+
+    PrintText(50, 80, "LIFE");
+    sprintf(str_buf, "%d", player.life);
+    PrintText(120, 80, str_buf);
+
+    PrintText(50, 100, "SPEED");
+    sprintf(str_buf, "%d", player.speed);
+    PrintText(120, 100, str_buf);
+
+    PrintText(50, 120, "SHOT");
+    sprintf(str_buf, "%d", player.shot);
+    PrintText(120, 120, str_buf);
+
+    PrintText(50, 140, "GRAZE");
+    sprintf(str_buf, "%d", player.graze);
+    PrintText(120, 140, str_buf);
+
+    PrintText(50, 160, "COLLISION");
+    sprintf(str_buf, "%d", player.collision);
+    PrintText(180, 160, str_buf);
   }
 
-  glColor4ub(0, 0, 255, mode==2 ? 255 : 0);
-  glBegin(GL_QUADS);
-  glVertex2i(player.x-3, player.y-3);
-  glVertex2i(player.x-3, player.y+3);
-  glVertex2i(player.x+3, player.y+3);
-  glVertex2i(player.x+3, player.y-3);
-  glEnd();
+  if (mode == 3) {
+    glColor4ub(0, 0, 0, 128);
+    glBegin(GL_QUADS);
+    glVertex2i(0, 0);
+    glVertex2i(0, WHEIGHT);
+    glVertex2i(WWIDTH, WHEIGHT);
+    glVertex2i(WWIDTH, 0);
+    glEnd();
 
-  glColor4ub(255, 0, 0, mode==2 ? 255 : 0);
-  glBegin(GL_POINTS);
-  glVertex2i(player.x, player.y);
-  glEnd();
+    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
+    PrintText(101, 291, "START");
+    glColor4ub(255, 0, 0, menu_select==1 ? 255 : 0);
+    PrintText(101, 311, "SETTING");
+    glColor4ub(255, 0, 0, menu_select==2 ? 255 : 0);
+    PrintText(101, 331, "TITLE");
 
-  PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, mode==2 ? 255 : 0);
-
-  glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
-  PrintText(40, 540, "SCORE");
-  sprintf(str_buf, "%015d", score);
-  PrintText(120, 540, str_buf);
-
-  glColor4ub(0, 0, 255, mode==2 ? 200 : 0);
-  PrintText(50, 60, "POS");
-  sprintf(str_buf, "%d, %d", player.x, player.y);
-  PrintText(120, 60, str_buf);
-
-  PrintText(50, 80, "LIFE");
-  sprintf(str_buf, "%d", player.life);
-  PrintText(120, 80, str_buf);
-
-  PrintText(50, 100, "SPEED");
-  sprintf(str_buf, "%d", player.speed);
-  PrintText(120, 100, str_buf);
-
-  PrintText(50, 120, "SHOT");
-  sprintf(str_buf, "%d", player.shot);
-  PrintText(120, 120, str_buf);
-
-  PrintText(50, 140, "GRAZE");
-  sprintf(str_buf, "%d", player.graze);
-  PrintText(120, 140, str_buf);
-
-  PrintText(50, 160, "COLLISION");
-  sprintf(str_buf, "%d", player.collision);
-  PrintText(180, 160, str_buf);
+    glColor4ub(255, 255, 255, 255);
+    PrintText(100, 290, "START");
+    PrintText(100, 310, "SETTING");
+    PrintText(100, 330, "TITLE");
+  }
 
 
   //w = glutGet(GLUT_WINDOW_WIDTH);
@@ -453,13 +497,59 @@ void Entry(int s)
 
 void Keyboard(unsigned char key, int x, int y)
 {
-  if ((key == 'q') || (key == 27)) {
+  if ((key == 'q')) {
     printf("End\n");
     exit(0);
   }
+  if (key == 27) {
+    if (mode == 2) {
+      mode = 3;
+    }
+    else if (mode == 3) {
+      mode = 2;
+    }
+  }
   if (key == 'z' || key == 'Z') {
-    printf("zDown\n");
-    player.shot = 1;
+    if (mode == 0) {
+      switch (menu_select) {
+      case 0:
+        mode = 2;
+        break;
+
+      case 1:
+        mode = 1;
+        break;
+
+      case 2:
+        exit(0);
+        break;
+
+      default:
+        break;
+      }
+    }
+    else if (mode == 3) {
+      switch (menu_select) {
+      case 0:
+        mode = 2;
+        break;
+
+      case 1:
+        mode = 1;
+        break;
+
+      case 2:
+        mode = 0;
+        break;
+
+      default:
+        break;
+      }
+    }
+    else {
+      printf("zDown\n");
+      player.shot = 1;
+    }
   }
 }
 
@@ -487,7 +577,7 @@ void SpecialKey(int key, int x, int y)
 
   switch (key) {
   case GLUT_KEY_RIGHT:
-    if (mode == 0) {
+    if (mode == 0 || mode == 3) {
       printf("RIGHT\n");
     }
     else if (mode == 2) {
@@ -497,8 +587,8 @@ void SpecialKey(int key, int x, int y)
     break;
 
   case GLUT_KEY_LEFT:
-    if (mode == 0) {
-      printf("RIGHT\n");
+    if (mode == 0 || mode == 3) {
+      printf("LEFT\n");
     }
     else if (mode == 2) {
       direction[3] = 1;
@@ -507,8 +597,14 @@ void SpecialKey(int key, int x, int y)
     break;
 
   case GLUT_KEY_UP:
-    if (mode == 0) {
-      printf("RIGHT\n");
+    if (mode == 0 || mode == 3) {
+      printf("UP\n");
+      if (menu_select> 0) {
+        menu_select--;
+      }
+      else {
+        menu_select= 2;
+      }
     }
     else if (mode == 2) {
       direction[0] = 1;
@@ -517,8 +613,14 @@ void SpecialKey(int key, int x, int y)
     break;
 
   case GLUT_KEY_DOWN:
-    if (mode == 0) {
-      printf("RIGHT\n");
+    if (mode == 0 || mode == 3) {
+      printf("DOWN\n");
+      if (menu_select< 2) {
+        menu_select++;
+      }
+      else {
+        menu_select= 0;
+      }
     }
     else if (mode == 2) {
       direction[2] = 1;
