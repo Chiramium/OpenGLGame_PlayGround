@@ -60,7 +60,7 @@ struct ENEMY
 } ENEMY;
 
 
-int mode = 2;
+int mode = 0;
 int col = 0;
 int score = 0;
 char str[32];
@@ -311,6 +311,8 @@ void Display(void)
 
   glColor4ub(255, 255, 255, mode==0 ? 255 : 0);
   PrintText(100, 290, "START");
+  PrintText(100, 310, "SETTING");
+  PrintText(100, 330, "QUIT");
 
   glColor4ub(255, 255, 255, mode==2 ? 255 : 0);
   glBegin(GL_QUADS);
@@ -455,7 +457,7 @@ void Keyboard(unsigned char key, int x, int y)
     printf("End\n");
     exit(0);
   }
-  if (key == 'z') {
+  if (key == 'z' || key == 'Z') {
     printf("zDown\n");
     player.shot = 1;
   }
@@ -463,7 +465,7 @@ void Keyboard(unsigned char key, int x, int y)
 
 void KeyboardUp(unsigned char key, int x, int y)
 {
-  if (key == 'z') {
+  if (key == 'z' || key == 'Z') {
     printf("zUp\n");
     player.shot = 0;
   }
@@ -473,32 +475,54 @@ void SpecialKey(int key, int x, int y)
 {
   int mod = 0;
 
-  mod = glutGetModifiers();
-  if ((mod & GLUT_ACTIVE_SHIFT) != 0) {
-    player.speed = 1;
-  }
-  else {
-    player.speed = 5;
+  if (mode == 2) {
+    mod = glutGetModifiers();
+    if ((mod & GLUT_ACTIVE_SHIFT) != 0) {
+      player.speed = 1;
+    }
+    else {
+      player.speed = 5;
+    }
   }
 
   switch (key) {
   case GLUT_KEY_RIGHT:
-    direction[1] = 1;
+    if (mode == 0) {
+      printf("RIGHT\n");
+    }
+    else if (mode == 2) {
+      direction[1] = 1;
+    }
     glutPostRedisplay();
     break;
 
   case GLUT_KEY_LEFT:
-    direction[3] = 1;
+    if (mode == 0) {
+      printf("RIGHT\n");
+    }
+    else if (mode == 2) {
+      direction[3] = 1;
+    }
     glutPostRedisplay();
     break;
 
   case GLUT_KEY_UP:
-    direction[0] = 1;
+    if (mode == 0) {
+      printf("RIGHT\n");
+    }
+    else if (mode == 2) {
+      direction[0] = 1;
+    }
     glutPostRedisplay();
     break;
 
   case GLUT_KEY_DOWN:
-    direction[2] = 1;
+    if (mode == 0) {
+      printf("RIGHT\n");
+    }
+    else if (mode == 2) {
+      direction[2] = 1;
+    }
     glutPostRedisplay();
     break;
 
@@ -506,37 +530,37 @@ void SpecialKey(int key, int x, int y)
     break;
   }
   //printf("%d, %d\n", px, py);
-
 }
 
 void SpecialKeyUp(int key, int x, int y)
 {
-  switch (key) {
-  case GLUT_KEY_RIGHT:
-    direction[1] = 0;
-    glutPostRedisplay();
-    break;
+  if (mode == 2) {
+    switch (key) {
+    case GLUT_KEY_RIGHT:
+      direction[1] = 0;
+      glutPostRedisplay();
+      break;
 
-  case GLUT_KEY_LEFT:
-    direction[3] = 0;
-    glutPostRedisplay();
-    break;
+    case GLUT_KEY_LEFT:
+      direction[3] = 0;
+      glutPostRedisplay();
+      break;
 
-  case GLUT_KEY_UP:
-    direction[0] = 0;
-    glutPostRedisplay();
-    break;
+    case GLUT_KEY_UP:
+      direction[0] = 0;
+      glutPostRedisplay();
+      break;
 
-  case GLUT_KEY_DOWN:
-    direction[2] = 0;
-    glutPostRedisplay();
-    break;
+    case GLUT_KEY_DOWN:
+      direction[2] = 0;
+      glutPostRedisplay();
+      break;
 
-  default:
-    break;
+    default:
+      break;
+    }
   }
   //printf("%d, %d\n", px, py);
-
 }
 
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a)
