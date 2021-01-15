@@ -9,12 +9,14 @@
 #define WWIDTH 480
 #define WHEIGHT 640
 
-#define ENEMIES_MAX 5
+#define ENEMIES_MAX 15
 
 // Prototype
 void Reshape(int, int);
 void Initialize();
 void Transition(int value);
+void MovePlayer();
+void MoveEnemy();
 void isCollided(void);
 void Title(void);
 void Select(void);
@@ -145,6 +147,7 @@ void Initialize()
     enemy[i].x = (random() % 400) + 40;
     enemy[i].y = (random() % 300) + 40;
     enemy[i].active = 1;
+    enemy[i].speed = random() % 10 + 1;
   }
 }
 
@@ -184,6 +187,60 @@ void Transition(int value)
   glutPostRedisplay();
 
   glutTimerFunc(20, Transition, 0);
+}
+
+void MovePlayer()
+{
+  if (direction[0] == 1) {
+    if (player.y > 64) {
+      player.y -= player.speed;
+    }
+    else {
+      player.y = 64;
+    }
+  }
+  if (direction[1] == 1) {
+    if (player.x < 416) {
+      player.x += player.speed;
+    }
+    else {
+      player.x = 416;
+    }
+  }
+  if (direction[2] == 1) {
+    if (player.y < 476) {
+      player.y += player.speed;
+    }
+    else {
+      player.y = 476;
+    }
+  }
+  if (direction[3] == 1) {
+    if (player.x > 64) {
+      player.x -= player.speed;
+    }
+    else {
+      player.x = 64;
+    }
+  }
+}
+
+void MoveEnemy()
+{
+  int i;
+
+  for (i = 0; i < ENEMIES_MAX; i++) {
+    if (enemy[i].active == 1) {
+      if (enemy[i].y < 500) {
+        enemy[i].y += enemy[i].speed;
+      }
+      else {
+        enemy[i].x = random() % 368 + 40;
+        enemy[i].y = 0 ;
+        enemy[i].speed = random() % 10 + 1;
+      }
+    }
+  }
 }
 
 void isCollided(void)
@@ -236,38 +293,8 @@ void Run(void)
   col = 2;
   score++;
 
-  if (direction[0] == 1) {
-    if (player.y > 64) {
-      player.y -= player.speed;
-    }
-    else {
-      player.y = 64;
-    }
-  }
-  if (direction[1] == 1) {
-    if (player.x < 416) {
-      player.x += player.speed;
-    }
-    else {
-      player.x = 416;
-    }
-  }
-  if (direction[2] == 1) {
-    if (player.y < 476) {
-      player.y += player.speed;
-    }
-    else {
-      player.y = 476;
-    }
-  }
-  if (direction[3] == 1) {
-    if (player.x > 64) {
-      player.x -= player.speed;
-    }
-    else {
-      player.x = 64;
-    }
-  }
+  MovePlayer();
+  MoveEnemy();
 
   isCollided();
 }
@@ -421,14 +448,14 @@ void Display(void)
     glEnd();
 
     glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(101, 291, "START");
+    PrintText(101, 291, "RESUME");
     glColor4ub(255, 0, 0, menu_select==1 ? 255 : 0);
     PrintText(101, 311, "SETTING");
     glColor4ub(255, 0, 0, menu_select==2 ? 255 : 0);
     PrintText(101, 331, "TITLE");
 
     glColor4ub(255, 255, 255, 255);
-    PrintText(100, 290, "START");
+    PrintText(100, 290, "RESUME");
     PrintText(100, 310, "SETTING");
     PrintText(100, 330, "TITLE");
   }
