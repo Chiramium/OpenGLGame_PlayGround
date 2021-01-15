@@ -35,6 +35,8 @@ void SpecialKey(int, int, int);
 void SpecialKeyUp(int, int, int);
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
 
+enum MODE{TITLE, SELECT, SETTING, RUN, PAUSE, RESULT};
+
 GLuint img, img_fl;
 pngInfo info, info_fl;
 
@@ -63,7 +65,7 @@ struct ENEMY
 } ENEMY;
 
 
-int mode = 0;
+int mode = TITLE;
 int col = 0;
 int score = 0;
 char str[32];
@@ -153,33 +155,32 @@ void Initialize()
 
 void Transition(int value)
 {
-  mode = mode % 5;
   //printf("modeA = %d\n", mode);
 
   switch (mode) {
-  case 0:
+  case TITLE:
     Title();
     break;
 
-  case 1:
+  case SELECT:
     Select();
     break;
 
-  case 2:
+  case RUN:
     Run();
     break;
 
-  case 3:
+  case PAUSE:
     Stop();
     break;
 
-  case 4:
+  case RESULT:
     Result();
     break;
 
   default:
     printf("mode error\n");
-    mode = 0;
+    mode = TITLE;
     break;
   }
 
@@ -271,6 +272,9 @@ void isCollided(void)
     if (player.life > 0) {
       player.life--;
     }
+    else {
+      mode = RESULT;
+    }
     cflag = 0;
   }
   else {
@@ -347,7 +351,7 @@ void Display(void)
   glVertex2i(WWIDTH, 0);
   glEnd();
 
-  if (mode == 0) {
+  if (mode == TITLE) {
     glColor4ub(0, 0, 0, menu_select==0 ? 255 : 0);
     PrintText(101, 291, "START");
     glColor4ub(0, 0, 0, menu_select==1 ? 255 : 0);
@@ -355,13 +359,13 @@ void Display(void)
     glColor4ub(0, 0, 0, menu_select==2 ? 255 : 0);
     PrintText(101, 331, "QUIT");
 
-    glColor4ub(255, 255, 255, mode==0 ? 255 : 0);
+    glColor4ub(255, 255, 255, 255);
     PrintText(100, 290, "START");
     PrintText(100, 310, "SETTING");
     PrintText(100, 330, "QUIT");
   }
 
-  if (mode == 2 || mode == 3) {
+  if (mode == RUN || mode == PAUSE || mode == RESULT) {
     glColor4ub(255, 255, 255, 255);
     glBegin(GL_QUADS);
     glVertex2i(40, 40);
@@ -438,7 +442,7 @@ void Display(void)
     PrintText(180, 160, str_buf);
   }
 
-  if (mode == 3) {
+  if (mode == PAUSE) {
     glColor4ub(0, 0, 0, 128);
     glBegin(GL_QUADS);
     glVertex2i(0, 0);
@@ -460,6 +464,21 @@ void Display(void)
     PrintText(100, 330, "TITLE");
   }
 
+  if (mode == RESULT) {
+    glColor4ub(0, 0, 0, 128);
+    glBegin(GL_QUADS);
+    glVertex2i(0, 0);
+    glVertex2i(0, WHEIGHT);
+    glVertex2i(WWIDTH, WHEIGHT);
+    glVertex2i(WWIDTH, 0);
+    glEnd();
+
+    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
+    PrintText(200, 200, "GAME OVER");
+    PrintText(200, 200, "SCORE: ");
+    sprintf(str_buf, "%015d", score);
+    PrintText(300, 200, str_buf);
+  }
 
   //w = glutGet(GLUT_WINDOW_WIDTH);
   //h = glutGet(GLUT_WINDOW_HEIGHT);
@@ -484,8 +503,6 @@ void Mouse (int b, int s, int x, int y)
     if (s == GLUT_UP) printf("[Left button up]");
     if (s == GLUT_DOWN) {
       printf("[Left button down]");
-      mode++;
-      printf("mode = %d\n", mode);
     }
   }
 
@@ -529,22 +546,22 @@ void Keyboard(unsigned char key, int x, int y)
     exit(0);
   }
   if (key == 27) {
-    if (mode == 2) {
-      mode = 3;
+    if (mode == PAUSE) {
+      mode = RUN;
     }
-    else if (mode == 3) {
-      mode = 2;
+    else if (mode == RUN) {
+      mode = PAUSE;
     }
   }
   if (key == 'z' || key == 'Z') {
-    if (mode == 0) {
+    if (mode == TITLE) {
       switch (menu_select) {
       case 0:
-        mode = 2;
+        mode = RUN;
         break;
 
       case 1:
-        mode = 1;
+        mode = SETTING;
         break;
 
       case 2:
@@ -555,23 +572,26 @@ void Keyboard(unsigned char key, int x, int y)
         break;
       }
     }
-    else if (mode == 3) {
+    else if (mode == PAUSE) {
       switch (menu_select) {
       case 0:
-        mode = 2;
+        mode = RUN;
         break;
 
       case 1:
-        mode = 1;
+        mode = SETTING;
         break;
 
       case 2:
-        mode = 0;
+        mode = TITLE;
         break;
 
       default:
         break;
       }
+    }
+    else if (mode == RESULT) {
+      mode = TITLE;
     }
     else {
       printf("zDown\n");
@@ -592,7 +612,7 @@ void SpecialKey(int key, int x, int y)
 {
   int mod = 0;
 
-  if (mode == 2) {
+  if (mode == RUN) {
     mod = glutGetModifiers();
     if ((mod & GLUT_ACTIVE_SHIFT) != 0) {
       player.speed = 1;
@@ -604,27 +624,27 @@ void SpecialKey(int key, int x, int y)
 
   switch (key) {
   case GLUT_KEY_RIGHT:
-    if (mode == 0 || mode == 3) {
+    if (mode == TITLE || mode == PAUSE) {
       printf("RIGHT\n");
     }
-    else if (mode == 2) {
+    else if (mode == RUN) {
       direction[1] = 1;
     }
     glutPostRedisplay();
     break;
 
   case GLUT_KEY_LEFT:
-    if (mode == 0 || mode == 3) {
+    if (mode == TITLE || mode == PAUSE) {
       printf("LEFT\n");
     }
-    else if (mode == 2) {
+    else if (mode == RUN) {
       direction[3] = 1;
     }
     glutPostRedisplay();
     break;
 
   case GLUT_KEY_UP:
-    if (mode == 0 || mode == 3) {
+    if (mode == TITLE || mode == PAUSE) {
       printf("UP\n");
       if (menu_select> 0) {
         menu_select--;
@@ -633,14 +653,14 @@ void SpecialKey(int key, int x, int y)
         menu_select= 2;
       }
     }
-    else if (mode == 2) {
+    else if (mode == RUN) {
       direction[0] = 1;
     }
     glutPostRedisplay();
     break;
 
   case GLUT_KEY_DOWN:
-    if (mode == 0 || mode == 3) {
+    if (mode == TITLE || mode == PAUSE) {
       printf("DOWN\n");
       if (menu_select< 2) {
         menu_select++;
@@ -649,7 +669,7 @@ void SpecialKey(int key, int x, int y)
         menu_select= 0;
       }
     }
-    else if (mode == 2) {
+    else if (mode == RUN) {
       direction[2] = 1;
     }
     glutPostRedisplay();
@@ -663,7 +683,7 @@ void SpecialKey(int key, int x, int y)
 
 void SpecialKeyUp(int key, int x, int y)
 {
-  if (mode == 2) {
+  if (mode == RUN) {
     switch (key) {
     case GLUT_KEY_RIGHT:
       direction[1] = 0;
