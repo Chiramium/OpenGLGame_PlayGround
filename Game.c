@@ -9,38 +9,16 @@
 #define WWIDTH 480
 #define WHEIGHT 640
 
-#define ENEMIES_MAX 15
+#define ENEMIES_MAX 5
 
-// Prototype
-void Reshape(int, int);
-void Initialize();
-void Transition(int value);
-void MovePlayer();
-void MoveEnemy();
-void isCollided(void);
-void Title(void);
-void Select(void);
-void Run(void);
-void Stop(void);
-void Result(void);
-void Display(void);
-void PrintText(int x, int y, char *s);
-void Mouse(int, int, int, int);
-void PassiveMotion(int, int);
-void Motion(int, int);
-void Entry(int);
-void Keyboard(unsigned char, int, int);
-void KeyboardUp(unsigned char, int, int);
-void SpecialKey(int, int, int);
-void SpecialKeyUp(int, int, int);
-void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
-
-enum MODE{TITLE, SELECT, SETTING, RUN, PAUSE, RESULT};
+enum MODE { TITLE, SELECT, SETTING, RUN, PAUSE, RESULT };
+enum ETYPE { CUBE, BOSS };
+enum BTYPE { BEAM, DOT, LINE };
 
 GLuint img, img_fl;
 pngInfo info, info_fl;
 
-struct PLAYER
+typedef struct PLAYER
 {
   int x;
   int y;
@@ -52,7 +30,7 @@ struct PLAYER
   int graze;
 } PLAYER;
 
-struct ENEMY
+typedef struct ENEMY
 {
   int x;
   int y;
@@ -64,6 +42,28 @@ struct ENEMY
   int type;
 } ENEMY;
 
+typedef struct e_Node
+{
+  ENEMY enemy;
+  struct e_Node *prev;
+  struct e_Node *next;
+} enemy_Node;
+
+typedef struct BULLET
+{
+  int x;
+  int y;
+  int dx;
+  int dy;
+  enum BTYPE type;
+} BULLET;
+
+typedef struct b_Node
+{
+  BULLET bullet;
+  struct b_Node *prev;
+  struct b_Node *next;
+} bullet_Node;
 
 int mode = TITLE;
 int col = 0;
@@ -72,8 +72,47 @@ char str[32];
 int plx = 216, ply = 452;
 int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
 int menu_select = 0;
+int enemiesCnt = 0;
 struct PLAYER player;
-struct ENEMY enemy[ENEMIES_MAX];
+enemy_Node* enemies;
+bullet_Node* bullets;
+
+// Prototype
+void Reshape(int, int);
+
+void Initialize();
+
+void Transition(int value);
+
+enemy_Node *AddEnemy(enemy_Node* enemies, int x, int y, int shot, int speed, int life, int collision, int active, enum ETYPE type);
+void FreeEnemy(enemy_Node* enemy);
+bullet_Node *AddBullet(bullet_Node* bullets, int x, int y, int dx, int dy, enum BTYPE type);
+void FreeBullet(bullet_Node* bullet);
+void MovePlayer();
+void MoveEnemy();
+void MoveBullet();
+void isCollided(void);
+void isEnemyCollided(void);
+
+void Title(void);
+void Select(void);
+void Run(void);
+void Stop(void);
+void Result(void);
+
+void Display(void);
+void PrintText(int x, int y, char *s);
+
+void Mouse(int, int, int, int);
+void PassiveMotion(int, int);
+void Motion(int, int);
+void Entry(int);
+void Keyboard(unsigned char, int, int);
+void KeyboardUp(unsigned char, int, int);
+void SpecialKey(int, int, int);
+void SpecialKeyUp(int, int, int);
+
+void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
 
 int main(int argc, char **argv)
 {
@@ -139,18 +178,19 @@ void Initialize()
 
   player.x = 240;
   player.y = 476;
-  player.speed = 5;
+  player.speed = 12;
   player.collision = 0;
   player.life = 100;
   player.shot = 0;
   player.graze = 0;
 
+  enemies = NULL;
   for (i = 0; i < ENEMIES_MAX; i++) {
-    enemy[i].x = (random() % 400) + 40;
-    enemy[i].y = (random() % 300) + 40;
-    enemy[i].active = 1;
-    enemy[i].speed = random() % 10 + 1;
+    enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, 0, 15, 0, 1, CUBE);
   }
+  enemiesCnt = i;
+
+  bullets = NULL;
 }
 
 void Transition(int value)
@@ -188,6 +228,123 @@ void Transition(int value)
   glutPostRedisplay();
 
   glutTimerFunc(20, Transition, 0);
+}
+
+enemy_Node *AddEnemy(enemy_Node* enemies, int x, int y, int shot, int speed, int life, int collision, int active, enum ETYPE type)
+{
+  // 新しいノードの作成
+  enemy_Node *node;
+  node = (enemy_Node *)malloc(sizeof(enemy_Node));
+  node->enemy.x = x;
+  node->enemy.y = y;
+  node->enemy.shot = shot;
+  node->enemy.speed = speed;
+  node->enemy.life = life;
+  node->enemy.collision = collision;
+  node->enemy.active = active;
+  node->enemy.type = type;
+
+  // 次の要素をNULLに指定
+  node->next = NULL;
+
+  if (enemies == NULL) {  // リストが空の場合
+    node->prev = NULL;
+    return node;  // 登録したノードを返す
+  }
+  else {
+    // リストの末尾のノードを探す
+    enemy_Node *p = enemies;
+    while (p->next != NULL) {
+        p = p->next;
+    }
+    // 前のノードと登録したノードを連結
+    p->next = node; // 前のノードの次を示す変数に登録したノードのポインタを渡す
+    node->prev = p; // 登録したノードの前を示す変数に前のノードを渡す
+
+    return enemies;
+  }
+}
+
+void FreeEnemy(enemy_Node* enemy)
+{
+  if (enemy->next == NULL) { // 末尾のノードを消去するとき
+    if (enemy->prev == NULL) { // 前のノードも存在しないとき
+      enemies = NULL; // リストの参照をNULLに戻す
+    }
+    else {
+      enemy->prev->next = NULL; // 前のノードの次を示す変数にNULLを渡す
+    }
+    free(enemy); // ノードを消去
+  }
+  else {
+    if (enemy->prev == NULL) {
+      enemy->next->prev = NULL;
+      enemies = enemy->next;
+      free(enemy); // ノードを消去
+    }
+    else {
+      enemy->prev->next = enemy->next; // 前のノードの次を示す変数に消去するノードの次に登録されているノードのポインタを渡す
+      enemy->next->prev = enemy->prev;
+      free(enemy); // ノードを消去
+    }
+  }
+}
+
+bullet_Node *AddBullet(bullet_Node* bullets, int x, int y, int dx, int dy, enum BTYPE type)
+{
+  // 新しいノードの作成
+  bullet_Node *node;
+  node = (bullet_Node *)malloc(sizeof(bullet_Node));
+  node->bullet.x = x;
+  node->bullet.y = y;
+  node->bullet.dx = dx;
+  node->bullet.dy = dy;
+  node->bullet.type = type;
+
+  // 次の要素をNULLに指定
+  node->next = NULL;
+
+  if (bullets == NULL) {  // リストが空の場合
+    node->prev = NULL;
+    return node;  // 登録したノードを返す
+  }
+  else {
+    // リストの末尾のノードを探す
+    bullet_Node *p = bullets;
+    while (p->next != NULL) {
+        p = p->next;
+    }
+    // 前のノードと登録したノードを連結
+    p->next = node; // 前のノードの次を示す変数に登録したノードのポインタを渡す
+    node->prev = p; // 登録したノードの前を示す変数に前のノードを渡す
+
+    return bullets;
+  }
+}
+
+void FreeBullet(bullet_Node* bullet)
+{
+  if (bullet->next == NULL) { // 末尾のノードを消去するとき
+    if (bullet->prev == NULL) { // 前のノードも存在しないとき
+      bullets = NULL; // リストの参照をNULLに戻す
+    }
+    else {
+      bullet->prev->next = NULL; // 前のノードの次を示す変数にNULLを渡す
+    }
+    free(bullet); // ノードを消去
+  }
+  else {
+    if (bullet->prev == NULL) {
+      bullet->next->prev = NULL;
+      bullets = bullet->next;
+      free(bullet); // ノードを消去
+    }
+    else {
+      bullet->prev->next = bullet->next; // 前のノードの次を示す変数に消去するノードの次に登録されているノードのポインタを渡す
+      bullet->next->prev = bullet->prev;
+      free(bullet); // ノードを消去
+    }
+  }
 }
 
 void MovePlayer()
@@ -228,43 +385,62 @@ void MovePlayer()
 
 void MoveEnemy()
 {
-  int i;
+  enemy_Node *p = enemies;
+  enemy_Node *temp;
 
-  for (i = 0; i < ENEMIES_MAX; i++) {
-    if (enemy[i].active == 1) {
-      if (enemy[i].y < 500) {
-        enemy[i].y += enemy[i].speed;
-      }
-      else {
-        enemy[i].x = random() % 368 + 40;
-        enemy[i].y = 0 ;
-        enemy[i].speed = random() % 10 + 1;
-      }
+  while (p != NULL) {
+    temp = p->next;
+    p->enemy.x += p->enemy.speed;
+    if (p->enemy.y < 0 || p->enemy.y > 500 || p->enemy.life <= 0) {
+      FreeEnemy(p);
     }
+    else {
+      p->enemy.y += p->enemy.speed;
+    }
+    p = temp;
+  }
+}
+
+void MoveBullet()
+{
+  bullet_Node *p = bullets;
+  bullet_Node *temp;
+
+  while (p != NULL) {
+    temp = p->next;
+    p->bullet.x += p->bullet.dx;
+    if (p->bullet.y > 0 && p->bullet.y <= 500) {
+      p->bullet.y += p->bullet.dy;
+    }
+    else {
+      FreeBullet(p);
+    }
+    p = temp;
   }
 }
 
 void isCollided(void)
 {
-  int i;
   int cflag = 0;
+  enemy_Node *p = enemies;
 
-  for (i = 0; i < ENEMIES_MAX; i++) {
-    if (((player.x-3 >= enemy[i].x && player.x-3 <= enemy[i].x+32) || (player.x+3 >= enemy[i].x && player.x+3 <= enemy[i].x+32)) && ((player.y-3 >= enemy[i].y && player.y-3 <= enemy[i].y+32) || (player.y+3 >= enemy[i].y && player.y+3 <= enemy[i].y+32))) {
+  while (p != NULL) {
+    if (((player.x-3 >= p->enemy.x && player.x-3 <= p->enemy.x+32) || (player.x+3 >= p->enemy.x && player.x+3 <= p->enemy.x+32)) && ((player.y-3 >= p->enemy.y && player.y-3 <= p->enemy.y+32) || (player.y+3 >= p->enemy.y && player.y+3 <= p->enemy.y+32))) {
       cflag = 1;
     }
-    else if ((player.x-3 >= enemy[i].x-8 && player.x-3 <= enemy[i].x+40) || (player.x+3 >= enemy[i].x-8 && player.x+3 <= enemy[i].x+40)) {
-      if ((player.y-3 >= enemy[i].y-8 && player.y-3 <= enemy[i].y+40) || (player.y+3 >= enemy[i].y-8 && player.y+3 <= enemy[i].y+40)) {
+    else if ((player.x-3 >= p->enemy.x-8 && player.x-3 <= p->enemy.x+40) || (player.x+3 >= p->enemy.x-8 && player.x+3 <= p->enemy.x+40)) {
+      if ((player.y-3 >= p->enemy.y-8 && player.y-3 <= p->enemy.y+40) || (player.y+3 >= p->enemy.y-8 && player.y+3 <= p->enemy.y+40)) {
         player.graze++;
         score += 100;
       }
     }
-    else if ((player.y-3 >= enemy[i].y-8 && player.y-3 <= enemy[i].y+40) || (player.y+3 >= enemy[i].y-8 && player.y+3 <= enemy[i].y+40)) {
-      if ((player.x-3 >= enemy[i].x-8 && player.x-3 <= enemy[i].x+40) || (player.x+3 >= enemy[i].x-8 && player.x+3 <= enemy[i].x+40)) {
+    else if ((player.y-3 >= p->enemy.y-8 && player.y-3 <= p->enemy.y+40) || (player.y+3 >= p->enemy.y-8 && player.y+3 <= p->enemy.y+40)) {
+      if ((player.x-3 >= p->enemy.x-8 && player.x-3 <= p->enemy.x+40) || (player.x+3 >= p->enemy.x-8 && player.x+3 <= p->enemy.x+40)) {
         player.graze++;
         score += 100;
       }
     }
+    p = p->next;
   }
 
   if (cflag == 1) {
@@ -279,6 +455,39 @@ void isCollided(void)
   }
   else {
     player.collision = 0;
+  }
+}
+
+void isEnemyCollided(void)
+{
+  bullet_Node *bp = bullets;
+  bullet_Node *b_temp;
+  enemy_Node *ep = enemies;
+  enemy_Node *e_temp;
+
+  while (bp != NULL) {
+    b_temp = bp->next;
+    ep = enemies;
+    while (ep != NULL) {
+      e_temp = ep->next;
+      if (bp->bullet.type == BEAM && ep->enemy.type == CUBE) {
+        if (((bp->bullet.x >= ep->enemy.x && bp->bullet.x <= ep->enemy.x+32) || (bp->bullet.x+4 >= ep->enemy.x && bp->bullet.x+4 <= ep->enemy.x+32)) && ((bp->bullet.y >= ep->enemy.y && bp->bullet.y <= ep->enemy.y+32) || (bp->bullet.y+12 >= ep->enemy.x && bp->bullet.y+12 <= ep->enemy.y+32))) {
+          ep->enemy.life--;
+          if (ep->enemy.life <= 0) {
+            enemiesCnt--;
+            FreeBullet(bp);
+            FreeEnemy(ep);
+            break;
+          }
+          else {
+            FreeBullet(bp);
+            break;
+          }
+        }
+      }
+      ep = e_temp;
+    }
+    bp = b_temp;
   }
 }
 
@@ -297,10 +506,23 @@ void Run(void)
   col = 2;
   score++;
 
+  if (player.shot == 1) {
+    bullets = AddBullet(bullets, player.x-12, player.y-8, 0, -20, BEAM);
+    bullets = AddBullet(bullets, player.x+8, player.y-8, 0, -20, BEAM);
+    //printf("%d, %d : %d\n", bullets->bullet.x, bullets->bullet.y, bullets->bullet.dy);
+  }
+
   MovePlayer();
+  MoveBullet();
   MoveEnemy();
 
   isCollided();
+  isEnemyCollided();
+
+  if (enemiesCnt < ENEMIES_MAX) {
+    enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, 0, 15, 0, 1, CUBE);
+    enemiesCnt++;
+  }
 }
 
 void Stop(void)
@@ -317,8 +539,9 @@ void Display(void)
 {
   //int x, y; // PNG画像をおく座標
   int width = 400, height = 460; // ゲームマップのサイズ
-  int i;
   char str_buf[16];
+  bullet_Node *bp = bullets;
+  enemy_Node *ep = enemies;
 
   // ウィンドウの背景色
   glClear(GL_COLOR_BUFFER_BIT);
@@ -374,26 +597,41 @@ void Display(void)
     glVertex2i(40+width+1, 40);
     glEnd();
 
-    PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, 255);
+    while (bp != NULL) {
+      if (bp->bullet.type == BEAM) {
+        glColor4ub(255, 0, 0, 255);
+        glBegin(GL_QUADS);
+        glVertex2i(bp->bullet.x, bp->bullet.y);
+        glVertex2i(bp->bullet.x, bp->bullet.y+12);
+        glVertex2i(bp->bullet.x+4, bp->bullet.y+12);
+        glVertex2i(bp->bullet.x+4, bp->bullet.y);
+        glEnd();
+      }
 
-    glColor4ub(0, 255, 0, 255);
-    for (i = 0; i < ENEMIES_MAX; i++) {
-      glBegin(GL_QUADS);
-      glVertex2i(enemy[i].x-8, enemy[i].y-8);
-      glVertex2i(enemy[i].x-8, enemy[i].y+40);
-      glVertex2i(enemy[i].x+40, enemy[i].y+40);
-      glVertex2i(enemy[i].x+40, enemy[i].y-8);
-      glEnd();
+      bp = bp->next;
     }
 
-    glColor4ub(255, 0, 0, 255);
-    for (i = 0; i < ENEMIES_MAX; i++) {
+    PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, 255);
+
+    while (ep != NULL) {
+      //printf("%d, %d, %d\n", ep->enemy.x, ep->enemy.y, ep->enemy.active);
+      glColor4ub(0, 255, 0, 255);
       glBegin(GL_QUADS);
-      glVertex2i(enemy[i].x, enemy[i].y);
-      glVertex2i(enemy[i].x, enemy[i].y+32);
-      glVertex2i(enemy[i].x+32, enemy[i].y+32);
-      glVertex2i(enemy[i].x+32, enemy[i].y);
+      glVertex2i(ep->enemy.x-8, ep->enemy.y-8);
+      glVertex2i(ep->enemy.x-8, ep->enemy.y+40);
+      glVertex2i(ep->enemy.x+40, ep->enemy.y+40);
+      glVertex2i(ep->enemy.x+40, ep->enemy.y-8);
       glEnd();
+
+      glColor4ub(255, 0, 0, 255);
+      glBegin(GL_QUADS);
+      glVertex2i(ep->enemy.x, ep->enemy.y);
+      glVertex2i(ep->enemy.x, ep->enemy.y+32);
+      glVertex2i(ep->enemy.x+32, ep->enemy.y+32);
+      glVertex2i(ep->enemy.x+32, ep->enemy.y);
+      glEnd();
+
+      ep = ep->next;
     }
 
     glColor4ub(0, 0, 255, 255);
@@ -440,6 +678,10 @@ void Display(void)
     PrintText(50, 160, "COLLISION");
     sprintf(str_buf, "%d", player.collision);
     PrintText(180, 160, str_buf);
+
+    PrintText(50, 180, "ENEMIES");
+    sprintf(str_buf, "%d", enemiesCnt);
+    PrintText(160, 180, str_buf);
   }
 
   if (mode == PAUSE) {
@@ -474,10 +716,10 @@ void Display(void)
     glEnd();
 
     glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(200, 200, "GAME OVER");
-    PrintText(200, 200, "SCORE: ");
+    PrintText(180, 200, "GAME OVER");
+    PrintText(120, 300, "SCORE: ");
     sprintf(str_buf, "%015d", score);
-    PrintText(300, 200, str_buf);
+    PrintText(200, 300, str_buf);
   }
 
   //w = glutGet(GLUT_WINDOW_WIDTH);
@@ -593,7 +835,7 @@ void Keyboard(unsigned char key, int x, int y)
     else if (mode == RESULT) {
       mode = TITLE;
     }
-    else {
+    else if (mode == RUN) {
       printf("zDown\n");
       player.shot = 1;
     }
@@ -618,7 +860,7 @@ void SpecialKey(int key, int x, int y)
       player.speed = 1;
     }
     else {
-      player.speed = 5;
+      player.speed = 12;
     }
   }
 
