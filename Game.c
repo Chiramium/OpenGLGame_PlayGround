@@ -62,9 +62,9 @@ typedef struct b_Node
   struct b_Node *next;
 } bullet_Node;
 
-GLuint img_pl, img_en, img_fl;
+GLuint img_pl, img_en, img_fl, img_title, img_pause, img_gmovr;
 GLuint img_num[10];
-pngInfo info_pl, info_en, info_fl;
+pngInfo info_pl, info_en, info_fl, info_title, info_pause, info_gmovr;
 pngInfo info_num[10] = {0};
 int mode = TITLE;
 int col = 0;
@@ -148,6 +148,15 @@ int main(int argc, char **argv)
 
   sprintf(str, "./images/field.png");
   img_fl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_fl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/title.png");
+  img_title = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_title, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/pause.png");
+  img_pause = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_pause, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/gameover.png");
+  img_gmovr = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_gmovr, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   // テキストに対応する画像の読み込み
   for (i = 0; i < 10; i++) {
@@ -599,6 +608,8 @@ void Display(void)
   glEnd();
 
   if (mode == TITLE) {
+    PutSprite(img_title, 0, 0, &info_title, 255, 255, 255, 255);
+
     glColor4ub(0, 0, 0, menu_select==0 ? 255 : 0);
     PrintText(101, 291, "START");
     glColor4ub(0, 0, 0, menu_select==1 ? 255 : 0);
@@ -672,6 +683,35 @@ void Display(void)
     glBegin(GL_POINTS);
     glVertex2i(player.x, player.y);
     glEnd();
+  }
+
+  if (mode == PAUSE) {
+    PutSprite(img_pause, 0, 0, &info_pause, 255, 255, 255, 255);
+
+    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
+    PrintText(101, 291, "RESUME");
+    glColor4ub(255, 0, 0, menu_select==1 ? 255 : 0);
+    PrintText(101, 311, "SETTING");
+    glColor4ub(255, 0, 0, menu_select==2 ? 255 : 0);
+    PrintText(101, 331, "TITLE");
+
+    glColor4ub(255, 255, 255, 255);
+    PrintText(100, 290, "RESUME");
+    PrintText(100, 310, "SETTING");
+    PrintText(100, 330, "TITLE");
+  }
+
+  if (mode == RESULT) {
+    PutSprite(img_gmovr, 0, 0, &info_gmovr, 255, 255, 255, 255);
+
+    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
+    PrintText(180, 200, "GAME OVER");
+    PrintText(120, 300, "SCORE: ");
+    sprintf(str_buf, "%015d", score);
+    PrintText(200, 300, str_buf);
+  }
+
+  if (mode == RUN || mode == PAUSE || mode == RESULT) {
 
     PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, 255);
 
@@ -733,44 +773,6 @@ void Display(void)
     PrintText(50, 180, "ENEMIES");
     sprintf(str_buf, "%d", enemiesCnt);
     PrintText(160, 180, str_buf);
-  }
-
-  if (mode == PAUSE) {
-    glColor4ub(0, 0, 0, 128);
-    glBegin(GL_QUADS);
-    glVertex2i(0, 0);
-    glVertex2i(0, WHEIGHT);
-    glVertex2i(WWIDTH, WHEIGHT);
-    glVertex2i(WWIDTH, 0);
-    glEnd();
-
-    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(101, 291, "RESUME");
-    glColor4ub(255, 0, 0, menu_select==1 ? 255 : 0);
-    PrintText(101, 311, "SETTING");
-    glColor4ub(255, 0, 0, menu_select==2 ? 255 : 0);
-    PrintText(101, 331, "TITLE");
-
-    glColor4ub(255, 255, 255, 255);
-    PrintText(100, 290, "RESUME");
-    PrintText(100, 310, "SETTING");
-    PrintText(100, 330, "TITLE");
-  }
-
-  if (mode == RESULT) {
-    glColor4ub(0, 0, 0, 128);
-    glBegin(GL_QUADS);
-    glVertex2i(0, 0);
-    glVertex2i(0, WHEIGHT);
-    glVertex2i(WWIDTH, WHEIGHT);
-    glVertex2i(WWIDTH, 0);
-    glEnd();
-
-    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(180, 200, "GAME OVER");
-    PrintText(120, 300, "SCORE: ");
-    sprintf(str_buf, "%015d", score);
-    PrintText(200, 300, str_buf);
   }
 
   //w = glutGet(GLUT_WINDOW_WIDTH);
