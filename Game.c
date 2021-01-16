@@ -186,7 +186,7 @@ void Initialize()
 
   enemies = NULL;
   for (i = 0; i < ENEMIES_MAX; i++) {
-    enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, 0, 15, 0, 1, CUBE);
+    enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, (random() % 10 + 1), 15, 0, 1, CUBE);
   }
   enemiesCnt = i;
 
@@ -390,8 +390,9 @@ void MoveEnemy()
 
   while (p != NULL) {
     temp = p->next;
-    p->enemy.x += p->enemy.speed;
-    if (p->enemy.y < 0 || p->enemy.y > 500 || p->enemy.life <= 0) {
+    //p->enemy.x += p->enemy.speed;
+    if ((p->enemy.x < 0 || p->enemy.x > 420) || (p->enemy.y < 0 || p->enemy.y > 500) || (p->enemy.life <= 0)) {
+      enemiesCnt--;
       FreeEnemy(p);
     }
     else {
@@ -520,7 +521,7 @@ void Run(void)
   isEnemyCollided();
 
   if (enemiesCnt < ENEMIES_MAX) {
-    enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, 0, 15, 0, 1, CUBE);
+    enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, (random() % 10 + 1), 15, 0, 1, CUBE);
     enemiesCnt++;
   }
 }
