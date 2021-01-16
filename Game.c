@@ -15,9 +15,6 @@ enum MODE { TITLE, SELECT, SETTING, RUN, PAUSE, RESULT };
 enum ETYPE { CUBE, BOSS };
 enum BTYPE { BEAM, DOT, LINE };
 
-GLuint img, img_fl;
-pngInfo info, info_fl;
-
 typedef struct PLAYER
 {
   int x;
@@ -65,6 +62,8 @@ typedef struct b_Node
   struct b_Node *next;
 } bullet_Node;
 
+GLuint img_pl, img_en, img_fl;
+pngInfo info_pl, info_en, info_fl;
 int mode = TITLE;
 int col = 0;
 int score = 0;
@@ -136,7 +135,10 @@ int main(int argc, char **argv)
   glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
   sprintf(str, "./images/player.png");
-  img = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+  img_pl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_pl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/enemy.png");
+  img_en = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_en, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   sprintf(str, "./images/field.png");
   img_fl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_fl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
@@ -390,7 +392,7 @@ void MoveEnemy()
 
   while (p != NULL) {
     temp = p->next;
-    //p->enemy.x += p->enemy.speed;
+    p->enemy.x += p->enemy.speed;
     if ((p->enemy.x < 0 || p->enemy.x > 420) || (p->enemy.y < 0 || p->enemy.y > 500) || (p->enemy.life <= 0)) {
       enemiesCnt--;
       FreeEnemy(p);
@@ -426,17 +428,17 @@ void isCollided(void)
   enemy_Node *p = enemies;
 
   while (p != NULL) {
-    if (((player.x-3 >= p->enemy.x && player.x-3 <= p->enemy.x+32) || (player.x+3 >= p->enemy.x && player.x+3 <= p->enemy.x+32)) && ((player.y-3 >= p->enemy.y && player.y-3 <= p->enemy.y+32) || (player.y+3 >= p->enemy.y && player.y+3 <= p->enemy.y+32))) {
+    if (((player.x-3 >= p->enemy.x+8 && player.x-3 <= p->enemy.x+24) || (player.x+3 >= p->enemy.x+8 && player.x+3 <= p->enemy.x+24)) && ((player.y-3 >= p->enemy.y+8 && player.y-3 <= p->enemy.y+24) || (player.y+3 >= p->enemy.y+8 && player.y+3 <= p->enemy.y+24))) {
       cflag = 1;
     }
-    else if ((player.x-3 >= p->enemy.x-8 && player.x-3 <= p->enemy.x+40) || (player.x+3 >= p->enemy.x-8 && player.x+3 <= p->enemy.x+40)) {
-      if ((player.y-3 >= p->enemy.y-8 && player.y-3 <= p->enemy.y+40) || (player.y+3 >= p->enemy.y-8 && player.y+3 <= p->enemy.y+40)) {
+    else if ((player.x-3 >= p->enemy.x && player.x-3 <= p->enemy.x+32) || (player.x+3 >= p->enemy.x && player.x+3 <= p->enemy.x+32)) {
+      if ((player.y-3 >= p->enemy.y && player.y-3 <= p->enemy.y+32) || (player.y+3 >= p->enemy.y && player.y+3 <= p->enemy.y+32)) {
         player.graze++;
         score += 100;
       }
     }
-    else if ((player.y-3 >= p->enemy.y-8 && player.y-3 <= p->enemy.y+40) || (player.y+3 >= p->enemy.y-8 && player.y+3 <= p->enemy.y+40)) {
-      if ((player.x-3 >= p->enemy.x-8 && player.x-3 <= p->enemy.x+40) || (player.x+3 >= p->enemy.x-8 && player.x+3 <= p->enemy.x+40)) {
+    else if ((player.y-3 >= p->enemy.y && player.y-3 <= p->enemy.y+32) || (player.y+3 >= p->enemy.y && player.y+3 <= p->enemy.y+32)) {
+      if ((player.x-3 >= p->enemy.x && player.x-3 <= p->enemy.x+32) || (player.x+3 >= p->enemy.x && player.x+3 <= p->enemy.x+32)) {
         player.graze++;
         score += 100;
       }
@@ -612,24 +614,26 @@ void Display(void)
       bp = bp->next;
     }
 
-    PutSprite(img, player.x-24, player.y-24, &info, 255, 255, 255, 255);
+    PutSprite(img_pl, player.x-24, player.y-24, &info_pl, 255, 255, 255, 255);
 
     while (ep != NULL) {
       //printf("%d, %d, %d\n", ep->enemy.x, ep->enemy.y, ep->enemy.active);
-      glColor4ub(0, 255, 0, 255);
-      glBegin(GL_QUADS);
-      glVertex2i(ep->enemy.x-8, ep->enemy.y-8);
-      glVertex2i(ep->enemy.x-8, ep->enemy.y+40);
-      glVertex2i(ep->enemy.x+40, ep->enemy.y+40);
-      glVertex2i(ep->enemy.x+40, ep->enemy.y-8);
-      glEnd();
+      PutSprite(img_en, ep->enemy.x, ep->enemy.y, &info_en, 255, 255, 255, 255);
 
-      glColor4ub(255, 0, 0, 255);
+      glColor4ub(0, 255, 0, 128);
       glBegin(GL_QUADS);
       glVertex2i(ep->enemy.x, ep->enemy.y);
       glVertex2i(ep->enemy.x, ep->enemy.y+32);
       glVertex2i(ep->enemy.x+32, ep->enemy.y+32);
       glVertex2i(ep->enemy.x+32, ep->enemy.y);
+      glEnd();
+
+      glColor4ub(255, 0, 0, 128);
+      glBegin(GL_QUADS);
+      glVertex2i(ep->enemy.x+8, ep->enemy.y+8);
+      glVertex2i(ep->enemy.x+8, ep->enemy.y+24);
+      glVertex2i(ep->enemy.x+24, ep->enemy.y+24);
+      glVertex2i(ep->enemy.x+24, ep->enemy.y+8);
       glEnd();
 
       ep = ep->next;
