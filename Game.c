@@ -63,7 +63,9 @@ typedef struct b_Node
 } bullet_Node;
 
 GLuint img_pl, img_en, img_fl;
+GLuint img_num[10];
 pngInfo info_pl, info_en, info_fl;
+pngInfo info_num[10] = {0};
 int mode = TITLE;
 int col = 0;
 int score = 0;
@@ -96,7 +98,7 @@ void isEnemyCollided(void);
 void Title(void);
 void Select(void);
 void Run(void);
-void Stop(void);
+void Pause(void);
 void Result(void);
 
 void Display(void);
@@ -112,9 +114,13 @@ void SpecialKey(int, int, int);
 void SpecialKeyUp(int, int, int);
 
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a);
+void PutImgNum(int x, int y, char str, int r, int g, int b, int a);
+void PutImgNumbers(int x, int y, char *s, int r, int g, int b, int a);
+
 
 int main(int argc, char **argv)
 {
+  int i;
   int scrWidth = 0, scrHeight = 0; // 画面全体のサイズ
 
   // ウィンドウ初期化, 乱数初期化
@@ -142,6 +148,13 @@ int main(int argc, char **argv)
 
   sprintf(str, "./images/field.png");
   img_fl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_fl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  // テキストに対応する画像の読み込み
+  for (i = 0; i < 10; i++) {
+    sprintf(str, "./fonts/%d.png", i); // ファイル名はすべてASCIIコードに対応
+    img_num[i] = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_num[i], GL_CLAMP, GL_NEAREST, GL_NEAREST);
+    printf("if = %d, W=%d, H=%d, D=%d, A=%d\n", img_num[i], info_num[i].Width, info_num[i].Height, info_num[i].Depth, info_num[i].Alpha);
+  }
 
   // コールバック関数の登録
   glutReshapeFunc(Reshape);
@@ -187,12 +200,20 @@ void Initialize()
   player.graze = 0;
 
   enemies = NULL;
-  for (i = 0; i < ENEMIES_MAX; i++) {
+  for (i = 0; i < ENEMIES_MAX-1; i++) {
     enemies = AddEnemy(enemies, (random() % 400) + 40, (random() % 300) + 40, 0, (random() % 10 + 1), 15, 0, 1, CUBE);
   }
   enemiesCnt = i;
 
+  enemies = AddEnemy(enemies, 50, 200, 0, 0, 1000, 0, 1, CUBE);
+
   bullets = NULL;
+
+  for (i = 0; i < 4; i++) {
+    direction[i] = 0;
+  }
+
+  score = 0;
 }
 
 void Transition(int value)
@@ -213,7 +234,7 @@ void Transition(int value)
     break;
 
   case PAUSE:
-    Stop();
+    Pause();
     break;
 
   case RESULT:
@@ -392,7 +413,7 @@ void MoveEnemy()
 
   while (p != NULL) {
     temp = p->next;
-    p->enemy.x += p->enemy.speed;
+    //p->enemy.x += p->enemy.speed;
     if ((p->enemy.x < 0 || p->enemy.x > 420) || (p->enemy.y < 0 || p->enemy.y > 500) || (p->enemy.life <= 0)) {
       enemiesCnt--;
       FreeEnemy(p);
@@ -528,7 +549,7 @@ void Run(void)
   }
 }
 
-void Stop(void)
+void Pause(void)
 {
 
 }
@@ -654,10 +675,35 @@ void Display(void)
 
     PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, 255);
 
-    glColor4ub(255, 255, 255, 255);
-    PrintText(40, 540, "SCORE");
     sprintf(str_buf, "%015d", score);
-    PrintText(120, 540, str_buf);
+    PutImgNumbers(160, 545, str_buf, 255, 255, 255, 255);
+
+    glColor4ub(40, 40, 40, 128);
+    glBegin(GL_QUADS);
+    glVertex2i(125, 593);
+    glVertex2i(125, 605);
+    glVertex2i(225, 605);
+    glVertex2i(225, 593);
+    glEnd();
+
+    if (player.life <= 10) {
+      glColor4ub(255, 0, 0, 255);
+    }
+    else if (player.life <= 30) {
+      glColor4ub(255, 255, 0, 255);
+    }
+    else {
+      glColor4ub(255, 255, 255, 255);
+    }
+    glBegin(GL_QUADS);
+    glVertex2i(125, 593);
+    glVertex2i(125, 605);
+    glVertex2i(player.life+125, 605);
+    glVertex2i(player.life+125, 593);
+    glEnd();
+
+    sprintf(str_buf, "%4d", player.graze);
+    PutImgNumbers(358, 589, str_buf, 255, 255, 255, 255);
 
     glColor4ub(0, 0, 255, 200);
     PrintText(50, 60, "POS");
@@ -838,6 +884,7 @@ void Keyboard(unsigned char key, int x, int y)
       }
     }
     else if (mode == RESULT) {
+      Initialize();
       mode = TITLE;
     }
     else if (mode == RUN) {
@@ -990,4 +1037,69 @@ void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a)
 
   glDisable(GL_TEXTURE_2D);
   glPopMatrix();
+}
+
+//
+// ====== PutImgNum関数 ======
+// ------ 機能 ------
+// 数字1桁を対応する画像で表示
+// -----------------
+// ===========================
+//
+void PutImgNum(int x, int y, char str, int r, int g, int b, int a)
+{
+  if (((int)str) - 48 < 0 || ((int)str) - 48 > 9) {
+    return;
+  }
+  PutSprite(img_num[((int)str) - 48], x, y, &info_num[((int)str) - 48], r, g, b, a);  // ASCIIコードに対応する画像を表示
+}
+
+//
+// ====== PutImgNumbers関数 ======
+// ------ 機能 ------
+// 与えられた数字を順番に表示
+// -----------------
+// ==========================
+//
+void PutImgNumbers(int x, int y, char *s, int r, int g, int b, int a)
+{
+  int i = 0;
+  int px = 0, py = 0; // 座標調整用変数
+
+  // はじめの一文字を表示
+  PutImgNum(x + (i * 18) + px, y + py, s[0], r, g, b, a);
+  px = 0;
+  py = 0;
+  for (i = 1; i < strlen(s); i++) { // 残りの文字を表示
+    // 特定の文字の場合は座標を調整
+    // if (s[i - 1] >= 'A' && s[i - 1] <= 'Z') { // 直前の文字が大文字
+    //   if (s[i - 1] == 'M' || s[i - 1] == 'W') {
+    //     px += 8;
+    //   }
+    //   if (s[i - 1] == 'C') {
+    //     px += 6;
+    //   }
+    //   px += 2;
+    // }
+    // if (s[i] == 'y') {
+    //   py += 10;
+    // }
+    // if (s[i - 1] == 'u') {
+    //   px -= 2;
+    // }
+    // if (s[i - 1] == 'i') {
+    //   px -= 8;
+    // }
+    // if (s[i - 1] == 'r') {
+    //   px -= 3;
+    // }
+    // if (s[i - 1] == 's') {
+    //   px -= 3;
+    // }
+    // if (s[i] == 's') {
+    //   px -= 3;
+    // }
+    PutImgNum(x + (i * 18) + px, y + py, s[i], r, g, b, a);
+    py = 0;
+  }
 }
