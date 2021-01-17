@@ -11,7 +11,7 @@
 
 #define ENEMIES_MAX 5
 
-enum MODE { TITLE, SELECT, SETTING, RUN, PAUSE, RESULT };
+enum MODE { TITLE, SELECT, SETTING, RUN, PAUSE, GAMEOVER, CLEAR };
 enum ETYPE { CIRCLE, CUBE, TRI, SHOT, BOSS };
 enum BTYPE { BEAM, DOT, LINE };
 enum DIRECTION { RIGHT, LEFT, STOP };
@@ -76,6 +76,7 @@ int plx = 216, ply = 452;
 int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
 int menu_select = 0;
 int enemiesCnt = 0;
+int killedEnemies = 0;
 struct PLAYER player;
 enemy_Node* enemies;
 bullet_Node* bullets;
@@ -95,6 +96,7 @@ void FreeBullet(bullet_Node* bullet);
 void MovePlayer();
 void MoveEnemy();
 void MoveBullet();
+void ShotEnemyBullet(int value);
 void isCollided(void);
 void isEnemyCollided(void);
 
@@ -102,7 +104,8 @@ void Title(void);
 void Select(void);
 void Run(void);
 void Pause(void);
-void Result(void);
+void GameOver(void);
+void Clear(void);
 
 void Display(void);
 void PrintText(int x, int y, char *s);
@@ -147,6 +150,7 @@ int main(int argc, char **argv)
   // コールバック関数の登録
   glutReshapeFunc(Reshape);
   glutTimerFunc(20, Transition, 0);
+  glutTimerFunc(100, ShotEnemyBullet, 0);
   glutDisplayFunc(Display);
   glutPassiveMotionFunc(PassiveMotion);
   glutMouseFunc(Mouse);
@@ -227,7 +231,7 @@ void Initialize()
 
   enemies = NULL;
   for (i = 0; i < ENEMIES_MAX-1; i++) {
-    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100), 0, 0, 0, (random() % 10 + 1), 15, random() % 2, random() % 4);
+    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100), 0, 0, 0, (random() % 5 + 1), 15, random() % 2, random() % 4);
   }
   enemiesCnt = i;
 
@@ -240,6 +244,7 @@ void Initialize()
   }
 
   score = 0;
+  killedEnemies = 0;
 }
 
 void Transition(int value)
@@ -263,8 +268,12 @@ void Transition(int value)
     Pause();
     break;
 
-  case RESULT:
-    Result();
+  case GAMEOVER:
+    GameOver();
+    break;
+
+  case CLEAR:
+    Clear();
     break;
 
   default:
@@ -484,7 +493,7 @@ void MoveEnemy()
           p->enemy.ry += p->enemy.speed/2 + 1;
         }
         if (p->enemy.type == SHOT) {
-          bullets = AddBullet(bullets, p->enemy.x+20, p->enemy.y+48, (random()%5)-2, (random()%5)+1, DOT);
+          p->enemy.shot = 1;
         }
       }
       else if (p->enemy.type == TRI) {
@@ -536,6 +545,22 @@ void MoveBullet()
   }
 }
 
+void ShotEnemyBullet(int value)
+{
+  printf("AAA\n");
+  enemy_Node *ep = enemies;
+
+  while (ep != NULL) {
+    if (ep->enemy.shot == 1) {
+      bullets = AddBullet(bullets, ep->enemy.x+20, ep->enemy.y+48, (random()%5)-2, (random()%3)+1, DOT);
+    }
+    ep = ep->next;
+  }
+
+
+  glutTimerFunc(100, ShotEnemyBullet, 0);
+}
+
 void isCollided(void)
 {
   int cflag = 0;
@@ -544,20 +569,26 @@ void isCollided(void)
   bullet_Node *b_temp;
 
   while (ep != NULL) {
-    if (((player.x-3 >= ep->enemy.x+8 && player.x-3 <= ep->enemy.x+24) || (player.x+3 >= ep->enemy.x+8 && player.x+3 <= ep->enemy.x+24)) && ((player.y-3 >= ep->enemy.y+8 && player.y-3 <= ep->enemy.y+24) || (player.y+3 >= ep->enemy.y+8 && player.y+3 <= ep->enemy.y+24))) {
-      cflag = 1;
-    }
-    else if ((player.x-3 >= ep->enemy.x && player.x-3 <= ep->enemy.x+32) || (player.x+3 >= ep->enemy.x && player.x+3 <= ep->enemy.x+32)) {
-      if ((player.y-3 >= ep->enemy.y && player.y-3 <= ep->enemy.y+32) || (player.y+3 >= ep->enemy.y && player.y+3 <= ep->enemy.y+32)) {
-        player.graze++;
-        score += 100;
+    if (ep->enemy.type == SHOT) {
+      if (((player.x-3 >= ep->enemy.x+8 && player.x-3 <= ep->enemy.x+40) || (player.x+3 >= ep->enemy.x+8 && player.x+3 <= ep->enemy.x+40)) && ((player.y-3 >= ep->enemy.y+8 && player.y-3 <= ep->enemy.y+40) || (player.y+3 >= ep->enemy.y+8 && player.y+3 <= ep->enemy.y+40))) {
+        cflag = 1;
+      }
+      else if ((player.x-3 >= ep->enemy.x && player.x-3 <= ep->enemy.x+48) || (player.x+3 >= ep->enemy.x && player.x+3 <= ep->enemy.x+48)) {
+        if ((player.y-3 >= ep->enemy.y && player.y-3 <= ep->enemy.y+48) || (player.y+3 >= ep->enemy.y && player.y+3 <= ep->enemy.y+48)) {
+          player.graze++;
+          score += 1200;
+        }
       }
     }
-    else if ((player.y-3 >= ep->enemy.y && player.y-3 <= ep->enemy.y+32) || (player.y+3 >= ep->enemy.y && player.y+3 <= ep->enemy.y+32)) {
-      if ((player.x-3 >= ep->enemy.x && player.x-3 <= ep->enemy.x+32) || (player.x+3 >= ep->enemy.x && player.x+3 <= ep->enemy.x+32)) {
-        printf("graze\n");
-        player.graze++;
-        score += 100;
+    else {
+      if (((player.x-3 >= ep->enemy.x+8 && player.x-3 <= ep->enemy.x+24) || (player.x+3 >= ep->enemy.x+8 && player.x+3 <= ep->enemy.x+24)) && ((player.y-3 >= ep->enemy.y+8 && player.y-3 <= ep->enemy.y+24) || (player.y+3 >= ep->enemy.y+8 && player.y+3 <= ep->enemy.y+24))) {
+        cflag = 1;
+      }
+      else if ((player.x-3 >= ep->enemy.x && player.x-3 <= ep->enemy.x+32) || (player.x+3 >= ep->enemy.x && player.x+3 <= ep->enemy.x+32)) {
+        if ((player.y-3 >= ep->enemy.y && player.y-3 <= ep->enemy.y+32) || (player.y+3 >= ep->enemy.y && player.y+3 <= ep->enemy.y+32)) {
+          player.graze++;
+          score += 1200;
+        }
       }
     }
     ep = ep->next;
@@ -566,10 +597,10 @@ void isCollided(void)
   if (cflag == 1) {
     player.collision = 1;
     if (player.life > 0) {
-      player.life--;
+      player.life -= 30;
     }
     else {
-      mode = RESULT;
+      mode = GAMEOVER;
     }
     cflag = 0;
   }
@@ -582,16 +613,16 @@ void isCollided(void)
     if (bp->bullet.type == DOT) {
       if (((player.x-3 >= bp->bullet.x && player.x-3 <= bp->bullet.x+8) || (player.x+3 >= bp->bullet.x && player.x+3 <= bp->bullet.x+8)) && ((player.y-3 >= bp->bullet.y && player.y-3 <= bp->bullet.y+8) || (player.y+3 >= bp->bullet.y && player.y+3 <= bp->bullet.y+8))) {
         if (player.life > 0) {
-          player.life--;
+          player.life -= 5;
         }
         else {
-          mode = RESULT;
+          mode = GAMEOVER;
         }
         FreeBullet(bp);
       }
       else if (((player.x-3 >= bp->bullet.x-4 && player.x-3 <= bp->bullet.x+12) || (player.x+3 >= bp->bullet.x-4 && player.x+3 <= bp->bullet.x+12)) && ((player.y-3 >= bp->bullet.y-4 && player.y-3 <= bp->bullet.y+12) || (player.y+3 >= bp->bullet.y-4 && player.y+3 <= bp->bullet.y+12))) {
           player.graze++;
-          score += 100;
+          score += 500;
       }
     }
     bp = b_temp;
@@ -614,7 +645,28 @@ void isEnemyCollided(void)
         if (((bp->bullet.x >= ep->enemy.x && bp->bullet.x <= ep->enemy.x+32) || (bp->bullet.x+4 >= ep->enemy.x && bp->bullet.x+4 <= ep->enemy.x+32)) && ((bp->bullet.y >= ep->enemy.y && bp->bullet.y <= ep->enemy.y+32) || (bp->bullet.y+12 >= ep->enemy.x && bp->bullet.y+12 <= ep->enemy.y+32))) {
           ep->enemy.life--;
           if (ep->enemy.life <= 0) {
+            switch (ep->enemy.type) {
+            case CIRCLE:
+              score += 100;
+              break;
+
+            case CUBE:
+              score += 300;
+              break;
+
+            case TRI:
+              score += 500;
+              break;
+
+            case SHOT:
+              score += 1000;
+              break;
+
+            default:
+              break;
+            }
             enemiesCnt--;
+            killedEnemies++;
             FreeBullet(bp);
             FreeEnemy(ep);
             break;
@@ -660,8 +712,12 @@ void Run(void)
   isEnemyCollided();
 
   if (enemiesCnt < ENEMIES_MAX) {
-    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100) + 40, 0, 0, 0, (random() % 10 + 1), 15, random() % 2, random() % 4);
+    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100) + 40, 0, 0, 0, (random() % 5 + 1), 15, random() % 2, random() % 4);
     enemiesCnt++;
+  }
+
+  if (killedEnemies >= 100) {
+    mode = CLEAR;
   }
 }
 
@@ -670,9 +726,14 @@ void Pause(void)
 
 }
 
-void Result(void)
+void GameOver(void)
 {
   col = 3;
+}
+
+void Clear(void)
+{
+
 }
 
 void Display(void)
@@ -730,7 +791,7 @@ void Display(void)
     PrintText(100, 330, "QUIT");
   }
 
-  if (mode == RUN || mode == PAUSE || mode == RESULT) {
+  if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR) {
     glColor4ub(255, 255, 255, 255);
     glBegin(GL_QUADS);
     glVertex2i(40, 40);
@@ -752,22 +813,44 @@ void Display(void)
       else if (ep->enemy.type == TRI) {
         PutSprite(img_en[2], ep->enemy.x, ep->enemy.y, &info_en[2], 255, 255, 255, 255);
       }
+      else if (ep->enemy.type == SHOT) {
+        PutSprite(img_en_shot, ep->enemy.x, ep->enemy.y, &info_en_shot, 255, 255, 255, 255);
+      }
 
-      glColor4ub(0, 255, 0, 128);
-      glBegin(GL_QUADS);
-      glVertex2i(ep->enemy.x, ep->enemy.y);
-      glVertex2i(ep->enemy.x, ep->enemy.y+32);
-      glVertex2i(ep->enemy.x+32, ep->enemy.y+32);
-      glVertex2i(ep->enemy.x+32, ep->enemy.y);
-      glEnd();
+      if (ep->enemy.type == CIRCLE || ep->enemy.type == CUBE || ep->enemy.type == TRI) {
+        glColor4ub(0, 255, 0, 128);
+        glBegin(GL_QUADS);
+        glVertex2i(ep->enemy.x, ep->enemy.y);
+        glVertex2i(ep->enemy.x, ep->enemy.y+32);
+        glVertex2i(ep->enemy.x+32, ep->enemy.y+32);
+        glVertex2i(ep->enemy.x+32, ep->enemy.y);
+        glEnd();
 
-      glColor4ub(255, 0, 0, 128);
-      glBegin(GL_QUADS);
-      glVertex2i(ep->enemy.x+8, ep->enemy.y+8);
-      glVertex2i(ep->enemy.x+8, ep->enemy.y+24);
-      glVertex2i(ep->enemy.x+24, ep->enemy.y+24);
-      glVertex2i(ep->enemy.x+24, ep->enemy.y+8);
-      glEnd();
+        glColor4ub(255, 0, 0, 128);
+        glBegin(GL_QUADS);
+        glVertex2i(ep->enemy.x+8, ep->enemy.y+8);
+        glVertex2i(ep->enemy.x+8, ep->enemy.y+24);
+        glVertex2i(ep->enemy.x+24, ep->enemy.y+24);
+        glVertex2i(ep->enemy.x+24, ep->enemy.y+8);
+        glEnd();
+      }
+      else if (ep->enemy.type == SHOT) {
+        glColor4ub(0, 255, 0, 128);
+        glBegin(GL_QUADS);
+        glVertex2i(ep->enemy.x, ep->enemy.y);
+        glVertex2i(ep->enemy.x, ep->enemy.y+48);
+        glVertex2i(ep->enemy.x+48, ep->enemy.y+48);
+        glVertex2i(ep->enemy.x+48, ep->enemy.y);
+        glEnd();
+
+        glColor4ub(255, 0, 0, 128);
+        glBegin(GL_QUADS);
+        glVertex2i(ep->enemy.x+8, ep->enemy.y+8);
+        glVertex2i(ep->enemy.x+8, ep->enemy.y+40);
+        glVertex2i(ep->enemy.x+40, ep->enemy.y+40);
+        glVertex2i(ep->enemy.x+40, ep->enemy.y+8);
+        glEnd();
+      }
 
       ep = ep->next;
     }
@@ -833,7 +916,7 @@ void Display(void)
     PrintText(100, 330, "TITLE");
   }
 
-  if (mode == RESULT) {
+  if (mode == GAMEOVER) {
     PutSprite(img_gmovr, 0, 0, &info_gmovr, 255, 255, 255, 255);
 
     glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
@@ -843,7 +926,7 @@ void Display(void)
     PrintText(200, 300, str_buf);
   }
 
-  if (mode == RUN || mode == PAUSE || mode == RESULT) {
+  if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR) {
 
     PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, 255);
 
@@ -1017,7 +1100,7 @@ void Keyboard(unsigned char key, int x, int y)
         break;
       }
     }
-    else if (mode == RESULT) {
+    else if (mode == GAMEOVER || mode == CLEAR) {
       Initialize();
       mode = TITLE;
     }
@@ -1046,7 +1129,7 @@ void SpecialKey(int key, int x, int y)
       player.speed = 1;
     }
     else {
-      player.speed = 12;
+      player.speed = 8;
     }
   }
 
