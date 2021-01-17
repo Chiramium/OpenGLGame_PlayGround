@@ -70,10 +70,8 @@ pngInfo info_pl, info_en[3], info_en_shot, info_en_bullet, info_boss, info_bg, i
 pngInfo info_num[10] = {0};
 enum MODE mode = TITLE;
 enum MODE nextMode;
-int col = 0;
 int score = 0;
 char str[32];
-int plx = 216, ply = 452;
 int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
 int menu_select = 0;
 int enemiesCnt = 0;
@@ -110,15 +108,9 @@ void Pause(void);
 void GameOver(void);
 void Clear(void);
 void FadeIn(void);
-void FadeOut(void);
 
 void Display(void);
-void PrintText(int x, int y, char *s);
 
-void Mouse(int, int, int, int);
-void PassiveMotion(int, int);
-void Motion(int, int);
-void Entry(int);
 void Keyboard(unsigned char, int, int);
 void KeyboardUp(unsigned char, int, int);
 void SpecialKey(int, int, int);
@@ -139,7 +131,7 @@ int main(int argc, char **argv)
   scrWidth = glutGet(GLUT_SCREEN_WIDTH);
   scrHeight = glutGet(GLUT_SCREEN_HEIGHT);
   glutInitWindowSize(WWIDTH, WHEIGHT);
-  glutCreateWindow("Game [Test] ---DEBUG MODE---");
+  glutCreateWindow("PlayGround [BETA] ---RELEASE MODE---");
   glutPositionWindow((scrWidth - WWIDTH) / 2, (scrHeight - WHEIGHT) / 2);
   glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA);
   glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -157,8 +149,6 @@ int main(int argc, char **argv)
   glutTimerFunc(20, Transition, 0);
   glutTimerFunc(100, ShotEnemyBullet, 0);
   glutDisplayFunc(Display);
-  glutPassiveMotionFunc(PassiveMotion);
-  glutMouseFunc(Mouse);
   glutKeyboardFunc(Keyboard);
   glutKeyboardUpFunc(KeyboardUp);
   glutSpecialFunc(SpecialKey);
@@ -247,7 +237,6 @@ void ImportImages()
   for (i = 0; i < 10; i++) {
     sprintf(str, "./fonts/%d.png", i); // ファイル名はすべてASCIIコードに対応
     img_num[i] = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_num[i], GL_CLAMP, GL_NEAREST, GL_NEAREST);
-    printf("if = %d, W=%d, H=%d, D=%d, A=%d\n", img_num[i], info_num[i].Width, info_num[i].Height, info_num[i].Depth, info_num[i].Alpha);
   }
 }
 
@@ -361,8 +350,6 @@ enemy_Node *AddEnemy(enemy_Node* enemies, int x, int y, int rx, int ry, int shot
   node->enemy.life = life;
   node->enemy.direction = direction;
   node->enemy.type = type;
-
-  printf("x=%d, y=%d, rx=%d, ry=%d, shot=%d, speed=%d, life=%d, direction=%d, type=%d\n", x, y, rx, ry, shot, speed, life, direction, type);
 
   // 次の要素をNULLに指定
   node->next = NULL;
@@ -615,7 +602,6 @@ void ShotEnemyBullet(int value)
     ep = ep->next;
   }
 
-
   glutTimerFunc(100, ShotEnemyBullet, 0);
 }
 
@@ -775,7 +761,6 @@ void Run(void)
     if (player.shot == 1) {
       bullets = AddBullet(bullets, player.x-12, player.y-8, 0, -20, BEAM);
       bullets = AddBullet(bullets, player.x+8, player.y-8, 0, -20, BEAM);
-      //printf("%d, %d : %d\n", bullets->bullet.x, bullets->bullet.y, bullets->bullet.dy);
     }
 
     MovePlayer();
@@ -864,56 +849,8 @@ void Display(void)
         PutSprite(img_en_shot, ep->enemy.x, ep->enemy.y, &info_en_shot, 255, 255, 255, 255);
       }
 
-      if (ep->enemy.type == CIRCLE || ep->enemy.type == CUBE || ep->enemy.type == TRI) {
-        glColor4ub(0, 255, 0, 128);
-        glBegin(GL_QUADS);
-        glVertex2i(ep->enemy.x, ep->enemy.y);
-        glVertex2i(ep->enemy.x, ep->enemy.y+32);
-        glVertex2i(ep->enemy.x+32, ep->enemy.y+32);
-        glVertex2i(ep->enemy.x+32, ep->enemy.y);
-        glEnd();
-
-        glColor4ub(255, 0, 0, 128);
-        glBegin(GL_QUADS);
-        glVertex2i(ep->enemy.x+8, ep->enemy.y+8);
-        glVertex2i(ep->enemy.x+8, ep->enemy.y+24);
-        glVertex2i(ep->enemy.x+24, ep->enemy.y+24);
-        glVertex2i(ep->enemy.x+24, ep->enemy.y+8);
-        glEnd();
-      }
-      else if (ep->enemy.type == SHOT) {
-        glColor4ub(0, 255, 0, 128);
-        glBegin(GL_QUADS);
-        glVertex2i(ep->enemy.x, ep->enemy.y);
-        glVertex2i(ep->enemy.x, ep->enemy.y+48);
-        glVertex2i(ep->enemy.x+48, ep->enemy.y+48);
-        glVertex2i(ep->enemy.x+48, ep->enemy.y);
-        glEnd();
-
-        glColor4ub(255, 0, 0, 128);
-        glBegin(GL_QUADS);
-        glVertex2i(ep->enemy.x+8, ep->enemy.y+8);
-        glVertex2i(ep->enemy.x+8, ep->enemy.y+40);
-        glVertex2i(ep->enemy.x+40, ep->enemy.y+40);
-        glVertex2i(ep->enemy.x+40, ep->enemy.y+8);
-        glEnd();
-      }
-
       ep = ep->next;
     }
-
-    glColor4ub(0, 0, 255, 255);
-    glBegin(GL_QUADS);
-    glVertex2i(player.x-3, player.y-3);
-    glVertex2i(player.x-3, player.y+3);
-    glVertex2i(player.x+3, player.y+3);
-    glVertex2i(player.x+3, player.y-3);
-    glEnd();
-
-    glColor4ub(255, 0, 0, 255);
-    glBegin(GL_POINTS);
-    glVertex2i(player.x, player.y);
-    glEnd();
 
     while (bp != NULL) {
       if (bp->bullet.type == BEAM) {
@@ -935,22 +872,6 @@ void Display(void)
       }
       if (bp->bullet.type == DOT) {
         PutSprite(img_en_bullet, bp->bullet.x, bp->bullet.y, &info_en_bullet, 255, 255, 255, 255);
-
-        glColor4ub(0, 255, 0, 128);
-        glBegin(GL_QUADS);
-        glVertex2i(bp->bullet.x, bp->bullet.y);
-        glVertex2i(bp->bullet.x, bp->bullet.y+16);
-        glVertex2i(bp->bullet.x+16, bp->bullet.y+16);
-        glVertex2i(bp->bullet.x+16, bp->bullet.y);
-        glEnd();
-
-        glColor4ub(255, 0, 0, 128);
-        glBegin(GL_QUADS);
-        glVertex2i(bp->bullet.x+4, bp->bullet.y+4);
-        glVertex2i(bp->bullet.x+4, bp->bullet.y+12);
-        glVertex2i(bp->bullet.x+12, bp->bullet.y+12);
-        glVertex2i(bp->bullet.x+12, bp->bullet.y+4);
-        glEnd();
       }
 
       bp = bp->next;
@@ -1021,35 +942,6 @@ void Display(void)
 
     sprintf(str_buf, "%4d", player.graze);
     PutImgNumbers(358, 589, str_buf, 255, 255, 255, 255);
-
-    glColor4ub(0, 0, 255, 200);
-    PrintText(50, 60, "POS");
-    sprintf(str_buf, "%d, %d", player.x, player.y);
-    PrintText(120, 60, str_buf);
-
-    PrintText(50, 80, "LIFE");
-    sprintf(str_buf, "%d", player.life);
-    PrintText(120, 80, str_buf);
-
-    PrintText(50, 100, "SPEED");
-    sprintf(str_buf, "%d", player.speed);
-    PrintText(120, 100, str_buf);
-
-    PrintText(50, 120, "SHOT");
-    sprintf(str_buf, "%d", player.shot);
-    PrintText(120, 120, str_buf);
-
-    PrintText(50, 140, "GRAZE");
-    sprintf(str_buf, "%d", player.graze);
-    PrintText(120, 140, str_buf);
-
-    PrintText(50, 160, "COLLISION");
-    sprintf(str_buf, "%d", player.collision);
-    PrintText(180, 160, str_buf);
-
-    PrintText(50, 180, "ENEMIES");
-    sprintf(str_buf, "%d", enemiesCnt);
-    PrintText(160, 180, str_buf);
   }
 
   if (mode == MANUAL) {
@@ -1070,63 +962,7 @@ void Display(void)
   glVertex2i(WWIDTH, 0);
   glEnd();
 
-  //w = glutGet(GLUT_WINDOW_WIDTH);
-  //h = glutGet(GLUT_WINDOW_HEIGHT);
-
   glFlush();
-}
-
-void PrintText(int x, int y, char *s)
-{
-  int i = 0;
-
-  glRasterPos2i(x, y);
-  for (i = 0; i < strlen(s); i++)
-  {
-    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, s[i]);
-  }
-}
-
-void Mouse (int b, int s, int x, int y)
-{
-  if (b == GLUT_LEFT_BUTTON) {
-    if (s == GLUT_UP) printf("[Left button up]");
-    if (s == GLUT_DOWN) {
-      printf("[Left button down]");
-    }
-  }
-
-  if (b == GLUT_MIDDLE_BUTTON) {
-    if (s == GLUT_UP) printf("[Middle button up]");
-    if (s == GLUT_DOWN) printf("[Middle button down]");
-  }
-
-  if (b == GLUT_RIGHT_BUTTON) {
-    if (s == GLUT_UP) printf("[Right button up]");
-    if (s == GLUT_DOWN) printf("[Right button down]");
-  }
-
-  printf(" at (%d, %d)\n", x, y);
-
-  // 再描画
-  glutPostRedisplay();
-}
-
-void PassiveMotion(int x, int y)
-{
-  printf("PassiveMotion : (x, y)=(%d, %d)\n", x, y);
-}
-
-void Motion(int x, int y)
-{
-  printf("Motion : (x, y)=(%d, %d)\n", x, y);
-  glutPostRedisplay();
-}
-
-void Entry(int s)
-{
-  if (s == GLUT_ENTERED) printf("Entered\n");
-  if (s == GLUT_LEFT) printf("Left\n");
 }
 
 void Keyboard(unsigned char key, int x, int y)
@@ -1277,7 +1113,6 @@ void SpecialKey(int key, int x, int y)
   default:
     break;
   }
-  //printf("%d, %d\n", px, py);
 }
 
 void SpecialKeyUp(int key, int x, int y)
@@ -1308,7 +1143,6 @@ void SpecialKeyUp(int key, int x, int y)
       break;
     }
   }
-  //printf("%d, %d\n", px, py);
 }
 
 void PutSprite(int num, int x, int y, pngInfo *info, int r, int g, int b, int a)
@@ -1369,14 +1203,10 @@ void PutImgNum(int x, int y, char str, int r, int g, int b, int a)
 void PutImgNumbers(int x, int y, char *s, int r, int g, int b, int a)
 {
   int i = 0;
-  int px = 0, py = 0; // 座標調整用変数
 
-  // はじめの一文字を表示
-  PutImgNum(x + (i * 18) + px, y + py, s[0], r, g, b, a);
-  px = 0;
-  py = 0;
-  for (i = 1; i < strlen(s); i++) { // 残りの文字を表示
-    PutImgNum(x + (i * 18) + px, y + py, s[i], r, g, b, a);
-    py = 0;
+  // はじめの一桁を表示
+  PutImgNum(x + (i * 18), y, s[0], r, g, b, a);
+  for (i = 1; i < strlen(s); i++) { // 残りの桁を表示
+    PutImgNum(x + (i * 18), y, s[i], r, g, b, a);
   }
 }
