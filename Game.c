@@ -11,7 +11,7 @@
 
 #define ENEMIES_MAX 5
 
-enum MODE { TITLE, SELECT, SETTING, RUN, PAUSE, GAMEOVER, CLEAR };
+enum MODE { TITLE, MANUAL, SETTING, RUN, PAUSE, GAMEOVER, CLEAR, FADEIN };
 enum ETYPE { CIRCLE, CUBE, TRI, SHOT, BOSS };
 enum BTYPE { BEAM, DOT, LINE };
 enum DIRECTION { RIGHT, LEFT, STOP };
@@ -64,11 +64,12 @@ typedef struct b_Node
   struct b_Node *next;
 } bullet_Node;
 
-GLuint img_pl, img_en[3], img_en_shot, img_boss, img_fl, img_title, img_pause, img_gmovr, img_clr, img_start, img_manual, img_resume, img_quit, img_gotitle;
+GLuint img_pl, img_en[3], img_en_shot, img_en_bullet,  img_boss, img_bg, img_fl, img_title, img_pause, img_manual, img_gmovr, img_clr, img_start, img_gomanual, img_resume, img_quit, img_gotitle;
 GLuint img_num[10];
-pngInfo info_pl, info_en[3], info_en_shot, info_boss, info_fl, info_title, info_pause, info_gmovr, info_clr, info_start, info_manual, info_resume, info_quit, info_gotitle;
+pngInfo info_pl, info_en[3], info_en_shot, info_en_bullet, info_boss, info_bg, info_fl, info_title, info_pause, info_manual, info_gmovr, info_clr, info_start, info_gomanual, info_resume, info_quit, info_gotitle;
 pngInfo info_num[10] = {0};
-int mode = TITLE;
+enum MODE mode = TITLE;
+enum MODE nextMode;
 int col = 0;
 int score = 0;
 char str[32];
@@ -77,6 +78,8 @@ int direction[4] = {0}; // 0:up, 1:right, 2:down, 3:left
 int menu_select = 0;
 int enemiesCnt = 0;
 int killedEnemies = 0;
+int fade = 255;
+int bg1_pos = 0, bg2_pos = 0;
 struct PLAYER player;
 enemy_Node* enemies;
 bullet_Node* bullets;
@@ -101,11 +104,13 @@ void isCollided(void);
 void isEnemyCollided(void);
 
 void Title(void);
-void Select(void);
+void Manual(void);
 void Run(void);
 void Pause(void);
 void GameOver(void);
 void Clear(void);
+void FadeIn(void);
+void FadeOut(void);
 
 void Display(void);
 void PrintText(int x, int y, char *s);
@@ -194,8 +199,14 @@ void ImportImages()
   sprintf(str, "./images/enemy/enemy_shot.png");
   img_en_shot = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_en_shot, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
+  sprintf(str, "./images/enemy/dot.png");
+  img_en_bullet = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_en_bullet, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
   sprintf(str, "./images/enemy/boss.png");
   img_boss = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_boss, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/scr/background.png");
+  img_bg = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_bg, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   sprintf(str, "./images/scr/field.png");
   img_fl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_fl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
@@ -206,6 +217,9 @@ void ImportImages()
   sprintf(str, "./images/scr/pause.png");
   img_pause = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_pause, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
+  sprintf(str, "./images/scr/manual.png");
+  img_manual = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_manual, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
   sprintf(str, "./images/scr/gameover.png");
   img_gmovr = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_gmovr, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
@@ -215,8 +229,8 @@ void ImportImages()
   sprintf(str, "./images/menu/start.png");
   img_start = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_start, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
-  sprintf(str, "./images/menu/manual.png");
-  img_manual = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_manual, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+  sprintf(str, "./images/menu/gomanual.png");
+  img_gomanual = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_gomanual, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   sprintf(str, "./images/menu/resume.png");
   img_resume = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_resume, GL_CLAMP, GL_NEAREST, GL_NEAREST);
@@ -241,6 +255,9 @@ void Initialize()
 {
   int i;
 
+  bg1_pos = 0;
+  bg2_pos= -960;
+
   player.x = 240;
   player.y = 476;
   player.speed = 12;
@@ -251,7 +268,7 @@ void Initialize()
 
   enemies = NULL;
   for (i = 0; i < ENEMIES_MAX-1; i++) {
-    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100), 0, 0, 0, (random() % 5 + 1), 15, random() % 2, random() % 4);
+    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100), 0, 0, 0, (random() % 4 + 1), 20, random() % 2, random() % 4);
   }
   enemiesCnt = i;
 
@@ -276,8 +293,8 @@ void Transition(int value)
     Title();
     break;
 
-  case SELECT:
-    Select();
+  case MANUAL:
+    Manual();
     break;
 
   case RUN:
@@ -294,6 +311,10 @@ void Transition(int value)
 
   case CLEAR:
     Clear();
+    break;
+
+  case FADEIN:
+    FadeIn();
     break;
 
   default:
@@ -498,22 +519,32 @@ void MoveEnemy()
       if (p->enemy.type == CIRCLE) {
         p->enemy.y += p->enemy.speed;
         p->enemy.ry += p->enemy.speed;
+        if (p->enemy.ry >= 100) {
+          bullets = AddBullet(bullets, p->enemy.x+24, p->enemy.y+32, 0, 3, DOT);
+          p->enemy.ry = 0;
+        }
       }
       else if (p->enemy.type == CUBE || p->enemy.type == SHOT) {
         if (p->enemy.direction == LEFT) {
-          p->enemy.x -= p->enemy.speed;
-          p->enemy.y += p->enemy.speed/2 + 1;
-          p->enemy.rx += p->enemy.speed;
-          p->enemy.ry += p->enemy.speed/2 + 1;
+          p->enemy.x -= p->enemy.speed/2 + 1;
+          p->enemy.y += p->enemy.speed;
+          p->enemy.rx += p->enemy.speed/2 + 1;
+          p->enemy.ry += p->enemy.speed;
         }
         else if (p->enemy.direction == RIGHT) {
-          p->enemy.x += p->enemy.speed;
-          p->enemy.y += p->enemy.speed/2 + 1;
-          p->enemy.rx += p->enemy.speed;
-          p->enemy.ry += p->enemy.speed/2 + 1;
+          p->enemy.x += p->enemy.speed/2 + 1;
+          p->enemy.y += p->enemy.speed;
+          p->enemy.rx += p->enemy.speed/2 + 1;
+          p->enemy.ry += p->enemy.speed;
         }
         if (p->enemy.type == SHOT) {
           p->enemy.shot = 1;
+        }
+        else {
+          if (p->enemy.ry >= 100) {
+            bullets = AddBullet(bullets, p->enemy.x+24, p->enemy.y+32, 0, 3, DOT);
+            p->enemy.ry = 0;
+          }
         }
       }
       else if (p->enemy.type == TRI) {
@@ -522,6 +553,10 @@ void MoveEnemy()
           p->enemy.y += p->enemy.speed;
           p->enemy.rx += p->enemy.speed;
           p->enemy.ry += p->enemy.speed;
+          if (p->enemy.ry >= 50) {
+            bullets = AddBullet(bullets, p->enemy.x+24, p->enemy.y+32, 0, 3, DOT);
+            p->enemy.ry = 0;
+          }
           if (p->enemy.rx >= 200) {
             p->enemy.direction = RIGHT;
             p->enemy.rx = 0;
@@ -532,6 +567,10 @@ void MoveEnemy()
           p->enemy.y += p->enemy.speed;
           p->enemy.rx += p->enemy.speed;
           p->enemy.ry += p->enemy.speed;
+          if (p->enemy.ry >= 50) {
+            bullets = AddBullet(bullets, p->enemy.x+24, p->enemy.y+32, 0, 3, DOT);
+            p->enemy.ry = 0;
+          }
           if (p->enemy.rx >= 200) {
             p->enemy.direction = LEFT;
             p->enemy.rx = 0;
@@ -567,7 +606,6 @@ void MoveBullet()
 
 void ShotEnemyBullet(int value)
 {
-  printf("AAA\n");
   enemy_Node *ep = enemies;
 
   while (ep != NULL) {
@@ -632,7 +670,7 @@ void isCollided(void)
   while (bp != NULL) {
     b_temp = bp->next;
     if (bp->bullet.type == DOT) {
-      if (((player.x-3 >= bp->bullet.x && player.x-3 <= bp->bullet.x+8) || (player.x+3 >= bp->bullet.x && player.x+3 <= bp->bullet.x+8)) && ((player.y-3 >= bp->bullet.y && player.y-3 <= bp->bullet.y+8) || (player.y+3 >= bp->bullet.y && player.y+3 <= bp->bullet.y+8))) {
+      if (((player.x-3 >= bp->bullet.x+4 && player.x-3 <= bp->bullet.x+12) || (player.x+3 >= bp->bullet.x+4 && player.x+3 <= bp->bullet.x+12)) && ((player.y-3 >= bp->bullet.y+4 && player.y-3 <= bp->bullet.y+12) || (player.y+3 >= bp->bullet.y+4 && player.y+3 <= bp->bullet.y+12))) {
         if (player.life > 0) {
           player.life -= 5;
         }
@@ -642,7 +680,7 @@ void isCollided(void)
         }
         FreeBullet(bp);
       }
-      else if (((player.x-3 >= bp->bullet.x-4 && player.x-3 <= bp->bullet.x+12) || (player.x+3 >= bp->bullet.x-4 && player.x+3 <= bp->bullet.x+12)) && ((player.y-3 >= bp->bullet.y-4 && player.y-3 <= bp->bullet.y+12) || (player.y+3 >= bp->bullet.y-4 && player.y+3 <= bp->bullet.y+12))) {
+      else if (((player.x-3 >= bp->bullet.x && player.x-3 <= bp->bullet.x+16) || (player.x+3 >= bp->bullet.x && player.x+3 <= bp->bullet.x+16)) && ((player.y-3 >= bp->bullet.y && player.y-3 <= bp->bullet.y+16) || (player.y+3 >= bp->bullet.y && player.y+3 <= bp->bullet.y+16))) {
           player.graze++;
           score += 500;
       }
@@ -707,39 +745,54 @@ void isEnemyCollided(void)
 
 void Title(void)
 {
-  col = 0;
+  if (fade > 0) {
+    fade -= 8;
+  }
+  else{}
 }
 
-void Select(void)
+void Manual(void)
 {
-  col = 1;
+
 }
 
 void Run(void)
 {
-  col = 2;
-  score++;
-
-  if (player.shot == 1) {
-    bullets = AddBullet(bullets, player.x-12, player.y-8, 0, -20, BEAM);
-    bullets = AddBullet(bullets, player.x+8, player.y-8, 0, -20, BEAM);
-    //printf("%d, %d : %d\n", bullets->bullet.x, bullets->bullet.y, bullets->bullet.dy);
+  bg1_pos+=2;
+  bg2_pos+=2;
+  if (bg1_pos >= 640) {
+    bg1_pos = bg2_pos - 960;
   }
-
-  MovePlayer();
-  MoveBullet();
-  MoveEnemy();
-
-  isCollided();
-  isEnemyCollided();
-
-  if (enemiesCnt < ENEMIES_MAX) {
-    enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100) + 40, 0, 0, 0, (random() % 5 + 1), 15, random() % 2, random() % 4);
-    enemiesCnt++;
+  else if (bg2_pos >= 640) {
+    bg2_pos = bg1_pos - 960;
   }
+  if (fade > 0) {
+    fade -= 8;
+  }
+  else {
+    score++;
 
-  if (killedEnemies >= 1) {
-    mode = CLEAR;
+    if (player.shot == 1) {
+      bullets = AddBullet(bullets, player.x-12, player.y-8, 0, -20, BEAM);
+      bullets = AddBullet(bullets, player.x+8, player.y-8, 0, -20, BEAM);
+      //printf("%d, %d : %d\n", bullets->bullet.x, bullets->bullet.y, bullets->bullet.dy);
+    }
+
+    MovePlayer();
+    MoveBullet();
+    MoveEnemy();
+
+    isCollided();
+    isEnemyCollided();
+
+    if (enemiesCnt < ENEMIES_MAX) {
+      enemies = AddEnemy(enemies, random() % 368 + 40, (random() % 100) + 40, 0, 0, 0, (random() % 4 + 1), 20, random() % 2, random() % 4);
+      enemiesCnt++;
+    }
+
+    if (killedEnemies >= 100) {
+      mode = CLEAR;
+    }
   }
 }
 
@@ -750,7 +803,7 @@ void Pause(void)
 
 void GameOver(void)
 {
-  col = 3;
+
 }
 
 void Clear(void)
@@ -758,10 +811,19 @@ void Clear(void)
 
 }
 
+void FadeIn()
+{
+  if (fade < 255) {
+    fade += 8;
+  }
+  else {
+    mode = nextMode;
+  }
+}
+
 void Display(void)
 {
   //int x, y; // PNG画像をおく座標
-  int width = 400, height = 460; // ゲームマップのサイズ
   char str_buf[16];
   bullet_Node *bp = bullets;
   enemy_Node *ep = enemies;
@@ -769,26 +831,21 @@ void Display(void)
   // ウィンドウの背景色
   glClear(GL_COLOR_BUFFER_BIT);
 
-  if (mode == TITLE) {
+  if (mode == TITLE || (mode == MANUAL && nextMode == TITLE) || (mode == FADEIN && nextMode == RUN)) {
     PutSprite(img_title, 0, 0, &info_title, 255, 255, 255, 255);
 
     PutSprite(img_start, 54, 379, &info_start, 0, 155, 133, menu_select==0 ? 255 : 0);
-    PutSprite(img_manual, 24, 474, &info_manual, 0, 155, 133, menu_select==1 ? 255 : 0);
+    PutSprite(img_gomanual, 24, 474, &info_gomanual, 0, 155, 133, menu_select==1 ? 255 : 0);
     PutSprite(img_quit, 34, 564, &info_quit, 0, 155, 133, menu_select==2 ? 255 : 0);
 
     PutSprite(img_start, 50, 375, &info_start, 255, 255, 255, 255);
-    PutSprite(img_manual, 20, 470, &info_manual, 255, 255, 255, 255);
+    PutSprite(img_gomanual, 20, 470, &info_gomanual, 255, 255, 255, 255);
     PutSprite(img_quit, 30, 560, &info_quit, 255, 255, 255, 255);
   }
 
-  if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR) {
-    glColor4ub(255, 255, 255, 255);
-    glBegin(GL_QUADS);
-    glVertex2i(40, 40);
-    glVertex2i(40, 40+height+1);
-    glVertex2i(40+width+1, 40+height+1);
-    glVertex2i(40+width+1, 40);
-    glEnd();
+  if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR || (mode == MANUAL && nextMode == PAUSE) || (mode == FADEIN && nextMode == TITLE)) {
+    PutSprite(img_bg, 0, bg1_pos, &info_bg, 255, 255, 255, 255);
+    PutSprite(img_bg, 0, bg2_pos, &info_bg, 255, 255, 255, 255);
 
     PutSprite(img_pl, player.x-24, player.y-24, &info_pl, 255, 255, 255, 255);
 
@@ -860,29 +917,39 @@ void Display(void)
 
     while (bp != NULL) {
       if (bp->bullet.type == BEAM) {
-        glColor4ub(255, 0, 0, 255);
+        glColor4ub(0, 0, 0, 255);
         glBegin(GL_QUADS);
         glVertex2i(bp->bullet.x, bp->bullet.y);
         glVertex2i(bp->bullet.x, bp->bullet.y+12);
         glVertex2i(bp->bullet.x+4, bp->bullet.y+12);
         glVertex2i(bp->bullet.x+4, bp->bullet.y);
         glEnd();
+
+        glColor4ub(0, 157, 198, 255);
+        glBegin(GL_QUADS);
+        glVertex2i(bp->bullet.x+1, bp->bullet.y+1);
+        glVertex2i(bp->bullet.x+1, bp->bullet.y+11);
+        glVertex2i(bp->bullet.x+3, bp->bullet.y+11);
+        glVertex2i(bp->bullet.x+3, bp->bullet.y+1);
+        glEnd();
       }
       if (bp->bullet.type == DOT) {
-        glColor4ub(0, 255, 0, 255);
-        glBegin(GL_QUADS);
-        glVertex2i(bp->bullet.x-4, bp->bullet.y-4);
-        glVertex2i(bp->bullet.x-4, bp->bullet.y+12);
-        glVertex2i(bp->bullet.x+12, bp->bullet.y+12);
-        glVertex2i(bp->bullet.x+12, bp->bullet.y-4);
-        glEnd();
+        PutSprite(img_en_bullet, bp->bullet.x, bp->bullet.y, &info_en_bullet, 255, 255, 255, 255);
 
-        glColor4ub(255, 0, 0, 255);
+        glColor4ub(0, 255, 0, 128);
         glBegin(GL_QUADS);
         glVertex2i(bp->bullet.x, bp->bullet.y);
-        glVertex2i(bp->bullet.x, bp->bullet.y+8);
-        glVertex2i(bp->bullet.x+8, bp->bullet.y+8);
-        glVertex2i(bp->bullet.x+8, bp->bullet.y);
+        glVertex2i(bp->bullet.x, bp->bullet.y+16);
+        glVertex2i(bp->bullet.x+16, bp->bullet.y+16);
+        glVertex2i(bp->bullet.x+16, bp->bullet.y);
+        glEnd();
+
+        glColor4ub(255, 0, 0, 128);
+        glBegin(GL_QUADS);
+        glVertex2i(bp->bullet.x+4, bp->bullet.y+4);
+        glVertex2i(bp->bullet.x+4, bp->bullet.y+12);
+        glVertex2i(bp->bullet.x+12, bp->bullet.y+12);
+        glVertex2i(bp->bullet.x+12, bp->bullet.y+4);
         glEnd();
       }
 
@@ -890,16 +957,16 @@ void Display(void)
     }
   }
 
-  if (mode == PAUSE) {
+  if (mode == PAUSE || (mode == MANUAL && nextMode == PAUSE)) {
     PutSprite(img_pause, 0, 0, &info_pause, 255, 255, 255, 255);
 
-    PutSprite(img_resume, 144, 224, &info_resume, 0, 155, 133, menu_select==0 ? 255 : 0);
-    PutSprite(img_manual, 144, 274, &info_manual, 0, 155, 133, menu_select==1 ? 255 : 0);
-    PutSprite(img_gotitle, 144, 324, &info_gotitle, 0, 155, 133, menu_select==2 ? 255 : 0);
+    PutSprite(img_resume, 179, 229, &info_resume, 0, 155, 133, menu_select==0 ? 255 : 0);
+    PutSprite(img_gomanual, 169, 279, &info_gomanual, 0, 155, 133, menu_select==1 ? 255 : 0);
+    PutSprite(img_gotitle, 199, 329, &info_gotitle, 0, 155, 133, menu_select==2 ? 255 : 0);
 
-    PutSprite(img_resume, 140, 220, &info_resume, 255, 255, 255, 255);
-    PutSprite(img_manual, 140, 270, &info_manual, 255, 255, 255, 255);
-    PutSprite(img_gotitle, 140, 320, &info_gotitle, 255, 255, 255, 255);
+    PutSprite(img_resume, 175, 225, &info_resume, 255, 255, 255, 255);
+    PutSprite(img_gomanual, 165, 275, &info_gomanual, 255, 255, 255, 255);
+    PutSprite(img_gotitle, 195, 325, &info_gotitle, 255, 255, 255, 255);
   }
 
   if (mode == GAMEOVER || mode == CLEAR) {
@@ -921,7 +988,7 @@ void Display(void)
 
   }
 
-  if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR) {
+  if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR || (mode == MANUAL && nextMode == PAUSE) || (mode == FADEIN && nextMode == TITLE)) {
 
     PutSprite(img_fl, 0, 0, &info_fl, 255, 255, 255, 255);
 
@@ -984,6 +1051,24 @@ void Display(void)
     sprintf(str_buf, "%d", enemiesCnt);
     PrintText(160, 180, str_buf);
   }
+
+  if (mode == MANUAL) {
+    PutSprite(img_manual, 0, 0, &info_manual, 255, 255, 255, 255);
+  }
+
+  if (fade < 0) {
+    fade = 0;
+  }
+  if (fade > 255) {
+    fade = 255;
+  }
+  glColor4ub(0, 0, 0, fade);
+  glBegin(GL_QUADS);
+  glVertex2i(0, 0);
+  glVertex2i(0, WHEIGHT);
+  glVertex2i(WWIDTH, WHEIGHT);
+  glVertex2i(WWIDTH, 0);
+  glEnd();
 
   //w = glutGet(GLUT_WINDOW_WIDTH);
   //h = glutGet(GLUT_WINDOW_HEIGHT);
@@ -1059,19 +1144,23 @@ void Keyboard(unsigned char key, int x, int y)
     }
     else if (mode == GAMEOVER || mode == CLEAR) {
       Initialize();
-      mode = TITLE;
+      mode = FADEIN;
+      nextMode = TITLE;
     }
   }
   if (key == 'z' || key == 'Z') {
     if (mode == TITLE) {
       switch (menu_select) {
       case 0:
-        mode = RUN;
+        mode = FADEIN;
+        nextMode = RUN;
         menu_select = 0;
+        Initialize();
         break;
 
       case 1:
-        mode = SETTING;
+        mode = MANUAL;
+        nextMode = TITLE;
         break;
 
       case 2:
@@ -1090,11 +1179,13 @@ void Keyboard(unsigned char key, int x, int y)
         break;
 
       case 1:
-        mode = SETTING;
+        mode = MANUAL;
+        nextMode = PAUSE;
         break;
 
       case 2:
-        mode = TITLE;
+        mode = FADEIN;
+        nextMode = TITLE;
         menu_select = 0;
         break;
 
@@ -1102,8 +1193,10 @@ void Keyboard(unsigned char key, int x, int y)
         break;
       }
     }
+    else if (mode == MANUAL) {
+      mode = nextMode;
+    }
     else if (mode == RUN) {
-      printf("zDown\n");
       player.shot = 1;
     }
   }
@@ -1112,8 +1205,9 @@ void Keyboard(unsigned char key, int x, int y)
 void KeyboardUp(unsigned char key, int x, int y)
 {
   if (key == 'z' || key == 'Z') {
-    printf("zUp\n");
-    player.shot = 0;
+    if (mode == RUN) {
+      player.shot = 0;
+    }
   }
 }
 
@@ -1134,7 +1228,6 @@ void SpecialKey(int key, int x, int y)
   switch (key) {
   case GLUT_KEY_RIGHT:
     if (mode == TITLE || mode == PAUSE) {
-      printf("RIGHT\n");
     }
     else if (mode == RUN) {
       direction[1] = 1;
@@ -1144,7 +1237,6 @@ void SpecialKey(int key, int x, int y)
 
   case GLUT_KEY_LEFT:
     if (mode == TITLE || mode == PAUSE) {
-      printf("LEFT\n");
     }
     else if (mode == RUN) {
       direction[3] = 1;
@@ -1154,7 +1246,6 @@ void SpecialKey(int key, int x, int y)
 
   case GLUT_KEY_UP:
     if (mode == TITLE || mode == PAUSE) {
-      printf("UP\n");
       if (menu_select> 0) {
         menu_select--;
       }
@@ -1170,7 +1261,6 @@ void SpecialKey(int key, int x, int y)
 
   case GLUT_KEY_DOWN:
     if (mode == TITLE || mode == PAUSE) {
-      printf("DOWN\n");
       if (menu_select< 2) {
         menu_select++;
       }
@@ -1286,34 +1376,6 @@ void PutImgNumbers(int x, int y, char *s, int r, int g, int b, int a)
   px = 0;
   py = 0;
   for (i = 1; i < strlen(s); i++) { // 残りの文字を表示
-    // 特定の文字の場合は座標を調整
-    // if (s[i - 1] >= 'A' && s[i - 1] <= 'Z') { // 直前の文字が大文字
-    //   if (s[i - 1] == 'M' || s[i - 1] == 'W') {
-    //     px += 8;
-    //   }
-    //   if (s[i - 1] == 'C') {
-    //     px += 6;
-    //   }
-    //   px += 2;
-    // }
-    // if (s[i] == 'y') {
-    //   py += 10;
-    // }
-    // if (s[i - 1] == 'u') {
-    //   px -= 2;
-    // }
-    // if (s[i - 1] == 'i') {
-    //   px -= 8;
-    // }
-    // if (s[i - 1] == 'r') {
-    //   px -= 3;
-    // }
-    // if (s[i - 1] == 's') {
-    //   px -= 3;
-    // }
-    // if (s[i] == 's') {
-    //   px -= 3;
-    // }
     PutImgNum(x + (i * 18) + px, y + py, s[i], r, g, b, a);
     py = 0;
   }
