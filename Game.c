@@ -64,9 +64,9 @@ typedef struct b_Node
   struct b_Node *next;
 } bullet_Node;
 
-GLuint img_pl, img_en[3], img_en_shot, img_boss, img_fl, img_title, img_pause, img_gmovr;
+GLuint img_pl, img_en[3], img_en_shot, img_boss, img_fl, img_title, img_pause, img_gmovr, img_clr, img_start, img_manual, img_resume, img_quit, img_gotitle;
 GLuint img_num[10];
-pngInfo info_pl, info_en[3], info_en_shot, info_boss, info_fl, info_title, info_pause, info_gmovr;
+pngInfo info_pl, info_en[3], info_en_shot, info_boss, info_fl, info_title, info_pause, info_gmovr, info_clr, info_start, info_manual, info_resume, info_quit, info_gotitle;
 pngInfo info_num[10] = {0};
 int mode = TITLE;
 int col = 0;
@@ -183,31 +183,51 @@ void ImportImages()
 {
   int i;
 
-  sprintf(str, "./images/player.png");
+  sprintf(str, "./images/player/player.png");
   img_pl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_pl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
   for (i = 0; i < 3; i++) {
-    sprintf(str, "./images/enemy%d.png", i);
+    sprintf(str, "./images/enemy/enemy%d.png", i);
     img_en[i] = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_en[i], GL_CLAMP, GL_NEAREST, GL_NEAREST);
   }
 
-  sprintf(str, "./images/enemy_shot.png");
+  sprintf(str, "./images/enemy/enemy_shot.png");
   img_en_shot = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_en_shot, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
-  sprintf(str, "./images/boss.png");
+  sprintf(str, "./images/enemy/boss.png");
   img_boss = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_boss, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
-  sprintf(str, "./images/field.png");
+  sprintf(str, "./images/scr/field.png");
   img_fl = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_fl, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
-  sprintf(str, "./images/title.png");
+  sprintf(str, "./images/scr/title.png");
   img_title = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_title, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
-  sprintf(str, "./images/pause.png");
+  sprintf(str, "./images/scr/pause.png");
   img_pause = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_pause, GL_CLAMP, GL_NEAREST, GL_NEAREST);
 
-  sprintf(str, "./images/gameover.png");
+  sprintf(str, "./images/scr/gameover.png");
   img_gmovr = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_gmovr, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/scr/clear.png");
+  img_clr = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_clr, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/menu/start.png");
+  img_start = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_start, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/menu/manual.png");
+  img_manual = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_manual, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/menu/resume.png");
+  img_resume = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_resume, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/menu/quit.png");
+  img_quit = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_quit, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+  sprintf(str, "./images/menu/gotitle.png");
+  img_gotitle = pngBind(str, PNG_NOMIPMAP, PNG_ALPHA, &info_gotitle, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+
 
   // テキストに対応する画像の読み込み
   for (i = 0; i < 10; i++) {
@@ -600,6 +620,7 @@ void isCollided(void)
       player.life -= 30;
     }
     else {
+      player.life = 0;
       mode = GAMEOVER;
     }
     cflag = 0;
@@ -616,6 +637,7 @@ void isCollided(void)
           player.life -= 5;
         }
         else {
+          player.life = 0;
           mode = GAMEOVER;
         }
         FreeBullet(bp);
@@ -716,7 +738,7 @@ void Run(void)
     enemiesCnt++;
   }
 
-  if (killedEnemies >= 100) {
+  if (killedEnemies >= 1) {
     mode = CLEAR;
   }
 }
@@ -747,48 +769,16 @@ void Display(void)
   // ウィンドウの背景色
   glClear(GL_COLOR_BUFFER_BIT);
 
-  switch (col) {
-  case 0:
-    glColor3ub(255, 0, 0);
-    break;
-
-  case 1:
-    glColor3ub(0, 255, 0);
-    break;
-
-  case 2:
-    glColor3ub(0, 0, 255);
-    break;
-
-  case 3:
-    glColor3ub(200, 30, 150);
-    break;
-
-  default:
-    break;
-  }
-
-  glBegin(GL_QUADS);
-  glVertex2i(0, 0);
-  glVertex2i(0, WHEIGHT);
-  glVertex2i(WWIDTH, WHEIGHT);
-  glVertex2i(WWIDTH, 0);
-  glEnd();
-
   if (mode == TITLE) {
     PutSprite(img_title, 0, 0, &info_title, 255, 255, 255, 255);
 
-    glColor4ub(0, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(101, 291, "START");
-    glColor4ub(0, 0, 0, menu_select==1 ? 255 : 0);
-    PrintText(101, 311, "SETTING");
-    glColor4ub(0, 0, 0, menu_select==2 ? 255 : 0);
-    PrintText(101, 331, "QUIT");
+    PutSprite(img_start, 54, 379, &info_start, 0, 155, 133, menu_select==0 ? 255 : 0);
+    PutSprite(img_manual, 24, 474, &info_manual, 0, 155, 133, menu_select==1 ? 255 : 0);
+    PutSprite(img_quit, 34, 564, &info_quit, 0, 155, 133, menu_select==2 ? 255 : 0);
 
-    glColor4ub(255, 255, 255, 255);
-    PrintText(100, 290, "START");
-    PrintText(100, 310, "SETTING");
-    PrintText(100, 330, "QUIT");
+    PutSprite(img_start, 50, 375, &info_start, 255, 255, 255, 255);
+    PutSprite(img_manual, 20, 470, &info_manual, 255, 255, 255, 255);
+    PutSprite(img_quit, 30, 560, &info_quit, 255, 255, 255, 255);
   }
 
   if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR) {
@@ -903,27 +893,32 @@ void Display(void)
   if (mode == PAUSE) {
     PutSprite(img_pause, 0, 0, &info_pause, 255, 255, 255, 255);
 
-    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(101, 291, "RESUME");
-    glColor4ub(255, 0, 0, menu_select==1 ? 255 : 0);
-    PrintText(101, 311, "SETTING");
-    glColor4ub(255, 0, 0, menu_select==2 ? 255 : 0);
-    PrintText(101, 331, "TITLE");
+    PutSprite(img_resume, 144, 224, &info_resume, 0, 155, 133, menu_select==0 ? 255 : 0);
+    PutSprite(img_manual, 144, 274, &info_manual, 0, 155, 133, menu_select==1 ? 255 : 0);
+    PutSprite(img_gotitle, 144, 324, &info_gotitle, 0, 155, 133, menu_select==2 ? 255 : 0);
 
-    glColor4ub(255, 255, 255, 255);
-    PrintText(100, 290, "RESUME");
-    PrintText(100, 310, "SETTING");
-    PrintText(100, 330, "TITLE");
+    PutSprite(img_resume, 140, 220, &info_resume, 255, 255, 255, 255);
+    PutSprite(img_manual, 140, 270, &info_manual, 255, 255, 255, 255);
+    PutSprite(img_gotitle, 140, 320, &info_gotitle, 255, 255, 255, 255);
   }
 
-  if (mode == GAMEOVER) {
-    PutSprite(img_gmovr, 0, 0, &info_gmovr, 255, 255, 255, 255);
+  if (mode == GAMEOVER || mode == CLEAR) {
+    if (mode == GAMEOVER) {
+      PutSprite(img_gmovr, 0, 0, &info_gmovr, 255, 255, 255, 255);
+    }
+    else {
+      PutSprite(img_clr, 0, 0, &info_clr, 255, 255, 255, 255);
+    }
 
-    glColor4ub(255, 0, 0, menu_select==0 ? 255 : 0);
-    PrintText(180, 200, "GAME OVER");
-    PrintText(120, 300, "SCORE: ");
-    sprintf(str_buf, "%015d", score);
-    PrintText(200, 300, str_buf);
+    sprintf(str_buf, "%011d", score);
+    PutImgNumbers(180, 231, str_buf, 255, 255, 255, 255);
+
+    sprintf(str_buf, "%4d", player.graze);
+    PutImgNumbers(306, 267, str_buf, 255, 255, 255, 255);
+
+    sprintf(str_buf, "%03d", killedEnemies);
+    PutImgNumbers(216, 305, str_buf, 255, 255, 255, 255);
+
   }
 
   if (mode == RUN || mode == PAUSE || mode == GAMEOVER || mode == CLEAR) {
@@ -1062,12 +1057,17 @@ void Keyboard(unsigned char key, int x, int y)
     else if (mode == RUN) {
       mode = PAUSE;
     }
+    else if (mode == GAMEOVER || mode == CLEAR) {
+      Initialize();
+      mode = TITLE;
+    }
   }
   if (key == 'z' || key == 'Z') {
     if (mode == TITLE) {
       switch (menu_select) {
       case 0:
         mode = RUN;
+        menu_select = 0;
         break;
 
       case 1:
@@ -1086,6 +1086,7 @@ void Keyboard(unsigned char key, int x, int y)
       switch (menu_select) {
       case 0:
         mode = RUN;
+        menu_select = 0;
         break;
 
       case 1:
@@ -1094,15 +1095,12 @@ void Keyboard(unsigned char key, int x, int y)
 
       case 2:
         mode = TITLE;
+        menu_select = 0;
         break;
 
       default:
         break;
       }
-    }
-    else if (mode == GAMEOVER || mode == CLEAR) {
-      Initialize();
-      mode = TITLE;
     }
     else if (mode == RUN) {
       printf("zDown\n");
